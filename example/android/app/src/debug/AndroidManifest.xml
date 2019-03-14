@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="danielwii.github.io.asuna_video_player_example">
+    <!-- Flutter needs it to communicate with the running application
+         to allow setting breakpoints, to provide hot reload, etc.
+    -->
+    <application
+        android:label="asuna_video_player_example"
+        tools:replace="android:label" />
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>
