@@ -9,6 +9,9 @@
     <application
         android:name="io.flutter.app.FlutterApplication"
         android:label="asuna_video_player_example"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:vmSafeMode="false"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

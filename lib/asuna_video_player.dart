@@ -1,272 +1,19 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:screen/screen.dart';
+import 'package:logging/logging.dart';
+
+export 'widgets.dart';
+
+final _logger = Logger('AsunaVideoPlayer');
 
 typedef void EventHandler(Object event);
 
 final MethodChannel _channel = const MethodChannel('asuna_video_player')..invokeMethod("init");
-
-class AsunaVideoPlayer extends StatefulWidget {
-  final AsunaVideoPlayerController controller;
-  static const EventChannel _status_channel = const EventChannel('asuna_video_player.event.status');
-  static const EventChannel _position_channel =
-      const EventChannel('asuna_video_player.event.position');
-  static const EventChannel _spectrum_channel =
-      const EventChannel('asuna_video_player.event.spectrum');
-
-  const AsunaVideoPlayer(this.controller);
-
-  static Future<Duration> get duration async {
-    int duration = await _channel.invokeMethod('getDuration');
-    return Duration(milliseconds: duration);
-  }
-
-  static listenStatus(EventHandler onEvent, EventHandler onError) {
-    _status_channel.receiveBroadcastStream().listen(onEvent, onError: onError);
-  }
-
-  static listenPosition(EventHandler onEvent, EventHandler onError) {
-    _position_channel.receiveBroadcastStream().listen(onEvent, onError: onError);
-  }
-
-  static listenSpectrum(EventHandler onEvent, EventHandler onError) {
-    _spectrum_channel.receiveBroadcastStream().listen(onEvent, onError: onError);
-  }
-
-  static Future<String> get platformVersion async {
-    final String version = await _channel.invokeMethod('getPlatformVersion');
-    return version;
-  }
-
-  @override
-  State<StatefulWidget> createState() => _AsunaVideoPlayerState();
-}
-
-class _AsunaVideoPlayerState extends State<AsunaVideoPlayer> {
-  VoidCallback _listener;
-  int _textureId;
-
-  _AsunaVideoPlayerState() {
-    _listener = () {
-      final int newTextureId = widget.controller.textureId;
-      if (newTextureId != _textureId) {
-        setState(() {
-          _textureId = newTextureId;
-        });
-      }
-    };
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _textureId = widget.controller.textureId;
-    // Need to listen for initialization events since the actual texture ID
-    // becomes available after asynchronous initialization finishes.
-    widget.controller.addListener(_listener);
-  }
-
-  @override
-  void didUpdateWidget(AsunaVideoPlayer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    oldWidget.controller.removeListener(_listener);
-    _textureId = widget.controller.textureId;
-    widget.controller.addListener(_listener);
-  }
-
-  @override
-  void deactivate() {
-    super.deactivate();
-    widget.controller.removeListener(_listener);
-  }
-
-  @override
-  Widget build(BuildContext context) => _textureId == null
-      ? Container(child: Text("no texture found"))
-      : Texture(textureId: _textureId);
-}
-
-class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
-  int _textureId;
-  bool _isDisposed = false;
-  Timer _timer;
-  StreamSubscription<dynamic> _eventSubscription;
-  final String dataSource;
-
-//  AsunaVideoPlayerController.instance() : super(_AsunaVideoPlayerValue(duration: null));
-  AsunaVideoPlayerController.network(this.dataSource)
-      : super(_AsunaVideoPlayerValue(duration: null));
-
-  int get textureId => _textureId;
-
-  Future<void> initialize() async {
-    print('AsunaVideoPlayerController.initialize $dataSource');
-    // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
-    // https://github.com/flutter/flutter/issues/26431
-    // ignore: strong_mode_implicit_dynamic_method
-    final Map<dynamic, dynamic> response = await _channel.invokeMethod("create", {
-      "title": "测试视频",
-      "source": dataSource,
-    });
-
-    print(response);
-    _textureId = response['textureId'];
-    final Completer<void> initializingCompleter = Completer<void>();
-    DurationRange toDurationRange(dynamic value) {
-      final List<dynamic> pair = value;
-      return DurationRange(Duration(milliseconds: pair[0]), Duration(milliseconds: pair[1]));
-    }
-
-    void eventListener(dynamic event) {
-      print(event);
-
-      final Map<dynamic, dynamic> map = event;
-      switch (map['event']) {
-        case 'initialized':
-          value = value.copyWith(
-            duration: Duration(milliseconds: map['duration']),
-            size: Size(map['width']?.toDouble() ?? 0.0, map['height']?.toDouble() ?? 0.0),
-          );
-          initializingCompleter.complete(null);
-          _applyLooping();
-          _applyVolume();
-          _applyPlayPause();
-          break;
-        case 'completed':
-          value = value.copyWith(isPlaying: false);
-          _timer?.cancel();
-          break;
-        case 'bufferingUpdate':
-          final List<dynamic> values = map['values'];
-          value = value.copyWith(buffered: values.map<DurationRange>(toDurationRange).toList());
-          break;
-        case 'bufferingStart':
-          value = value.copyWith(isBuffering: true);
-          break;
-        case 'bufferingEnd':
-          value = value.copyWith(isBuffering: false);
-          break;
-      }
-    }
-
-    void errorListener(Object error) {
-      final PlatformException e = error;
-      value = _AsunaVideoPlayerValue.erroneous(e.message);
-      _timer?.cancel();
-    }
-
-    _eventSubscription = _eventChannelFor(_textureId)
-        .receiveBroadcastStream()
-        .listen(eventListener, onError: errorListener);
-
-//    _channel.invokeMethod("play", {"textureId": _textureId});
-    return initializingCompleter.future;
-  }
-
-  EventChannel _eventChannelFor(int textureId) =>
-      EventChannel('asuna_video_player/videoEvents$textureId');
-
-  Future<void> setLooping(bool looping) async {
-    value = value.copyWith(isLooping: looping);
-  }
-
-  Future<Duration> get position async {
-    if (_isDisposed) {
-      return null;
-    }
-    return Duration(
-      // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
-      // https://github.com/flutter/flutter/issues/26431
-      // ignore: strong_mode_implicit_dynamic_method
-      milliseconds:
-          await _channel.invokeMethod('position', <String, dynamic>{'textureId': textureId}),
-    );
-  }
-
-  Future<void> _applyPlayPause() async {
-    if (!value.initialized || _isDisposed) {
-      return;
-    }
-    if (value.isPlaying) {
-      await _channel.invokeMethod('play', <String, dynamic>{'textureId': _textureId});
-      _timer = Timer.periodic(const Duration(milliseconds: 500), (Timer timer) async {
-        if (_isDisposed) {
-          return;
-        }
-        final Duration newPosition = await position;
-        if (_isDisposed) {
-          return;
-        }
-        value = value.copyWith(position: newPosition);
-      });
-    } else {
-      _timer?.cancel();
-      // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
-      // https://github.com/flutter/flutter/issues/26431
-      // ignore: strong_mode_implicit_dynamic_method
-      await _channel.invokeMethod('pause', <String, dynamic>{'textureId': _textureId});
-    }
-  }
-
-  Future<void> play() async {
-    value = value.copyWith(isPlaying: true);
-    await _applyPlayPause();
-  }
-
-  Future<void> pause() async {
-    value = value.copyWith(isPlaying: false);
-    await _applyPlayPause();
-  }
-
-  /// Sets the audio volume of [this].
-  ///
-  /// [volume] indicates a value between 0.0 (silent) and 1.0 (full volume) on a
-  /// linear scale.
-  Future<void> setVolume(double volume) async {
-    value = value.copyWith(volume: volume.clamp(0.0, 1.0));
-    await _applyVolume();
-  }
-
-  Future<void> _applyVolume() async {
-    if (!value.initialized || _isDisposed) {
-      return;
-    }
-    // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
-    // https://github.com/flutter/flutter/issues/26431
-    // ignore: strong_mode_implicit_dynamic_method
-    await _channel.invokeMethod(
-        'setVolume', <String, dynamic>{'textureId': _textureId, 'volume': value.volume});
-  }
-
-  Future<void> _applyLooping() async {
-    if (!value.initialized || _isDisposed) {
-      return;
-    }
-    // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
-    // https://github.com/flutter/flutter/issues/26431
-    // ignore: strong_mode_implicit_dynamic_method
-    _channel.invokeMethod(
-        'setLooping', <String, dynamic>{'textureId': _textureId, 'looping': value.isLooping});
-  }
-
-  Future<void> seekTo(Duration moment) async {
-    if (_isDisposed) {
-      return;
-    }
-    if (moment > value.duration) {
-      moment = value.duration;
-    } else if (moment < const Duration()) {
-      moment = const Duration();
-    }
-    await _channel.invokeMethod('seekTo', <String, dynamic>{
-      'textureId': _textureId,
-      'location': moment.inMilliseconds,
-    });
-    value = value.copyWith(position: moment);
-  }
-}
 
 class DurationRange {
   final Duration start;
@@ -377,6 +124,340 @@ class _AsunaVideoPlayerValue {
         'errorDescription: $errorDescription, '
         'size: $size}';
   }
+}
+
+enum DataSourceType { asset, network, file }
+
+class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
+  final String dataSource;
+  final DataSourceType dataSourceType;
+  final String package;
+  final Completer<void> initializingCompleter;
+
+  int _textureId;
+  Timer _timer;
+  bool _isDisposed = false;
+  Completer<void> _creatingCompleter;
+  StreamSubscription<dynamic> _eventSubscription;
+  _VideoAppLifeCycleObserver _lifeCycleObserver;
+
+  AsunaVideoPlayerController.asset(this.dataSource, {this.package})
+      : dataSourceType = DataSourceType.asset,
+        initializingCompleter = Completer<void>(),
+        super(_AsunaVideoPlayerValue(duration: null));
+
+  AsunaVideoPlayerController.network(this.dataSource)
+      : dataSourceType = DataSourceType.network,
+        package = null,
+        initializingCompleter = Completer<void>(),
+        super(_AsunaVideoPlayerValue(duration: null));
+
+  AsunaVideoPlayerController.file(File file)
+      : dataSource = 'file://${file.path}',
+        dataSourceType = DataSourceType.file,
+        package = null,
+        initializingCompleter = Completer<void>(),
+        super(_AsunaVideoPlayerValue(duration: null));
+
+  int get textureId => _textureId;
+
+  Future<void> initialize() async {
+    _logger.info('AsunaVideoPlayerController.initialize $dataSource');
+    _lifeCycleObserver = _VideoAppLifeCycleObserver(this);
+    _lifeCycleObserver.initialize();
+    _creatingCompleter = Completer<void>();
+
+    Map<dynamic, dynamic> dataSourceDescription;
+    switch (dataSourceType) {
+      case DataSourceType.asset:
+        dataSourceDescription = <String, dynamic>{'asset': dataSource, 'package': package};
+        break;
+      case DataSourceType.network:
+        dataSourceDescription = <String, dynamic>{'uri': dataSource};
+        break;
+      case DataSourceType.file:
+        dataSourceDescription = <String, dynamic>{'uri': dataSource};
+    }
+
+    // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
+    // https://github.com/flutter/flutter/issues/26431
+    // ignore: strong_mode_implicit_dynamic_method
+    final Map<dynamic, dynamic> response =
+        await _channel.invokeMethod("create", dataSourceDescription);
+
+    _logger.info('dataSourceDescription: $dataSourceDescription');
+    _logger.info('response: $response');
+    _textureId = response['textureId'];
+    _creatingCompleter.complete();
+//    final Completer<void> initializingCompleter = Completer<void>();
+
+    DurationRange toDurationRange(dynamic value) {
+      final List<dynamic> pair = value;
+      return DurationRange(Duration(milliseconds: pair[0]), Duration(milliseconds: pair[1]));
+    }
+
+    void eventListener(dynamic event) {
+      _logger.info(event);
+
+      final Map<dynamic, dynamic> map = event;
+      switch (map['event']) {
+        case 'initialized':
+          value = value.copyWith(
+            duration: Duration(milliseconds: map['duration']),
+            size: Size(map['width']?.toDouble() ?? 0.0, map['height']?.toDouble() ?? 0.0),
+          );
+          initializingCompleter.complete(null);
+          _applyLooping();
+          _applyVolume();
+          _applyPlayPause();
+          break;
+        case 'completed':
+          value = value.copyWith(isPlaying: false);
+          _timer?.cancel();
+          break;
+        case 'bufferingUpdate':
+          final List<dynamic> values = map['values'];
+          value = value.copyWith(buffered: values.map<DurationRange>(toDurationRange).toList());
+          break;
+        case 'bufferingStart':
+          value = value.copyWith(isBuffering: true);
+          break;
+        case 'bufferingEnd':
+          value = value.copyWith(isBuffering: false);
+          break;
+      }
+    }
+
+    void errorListener(Object error) {
+      final PlatformException e = error;
+      value = _AsunaVideoPlayerValue.erroneous(e.message);
+      _timer?.cancel();
+    }
+
+    _eventSubscription = _eventChannelFor(_textureId)
+        .receiveBroadcastStream()
+        .listen(eventListener, onError: errorListener);
+
+    return initializingCompleter.future;
+  }
+
+  EventChannel _eventChannelFor(int textureId) =>
+      EventChannel('asuna_video_player/videoEvents$textureId');
+
+  @override
+  Future<void> dispose() async {
+    if (_creatingCompleter != null) {
+      await _creatingCompleter.future;
+      if (!_isDisposed) {
+        _timer?.cancel();
+        await _eventSubscription?.cancel();
+        // TODO(amirh): remove this on when the invokeMethod update makes it to stable Flutter.
+        // https://github.com/flutter/flutter/issues/26431
+        // ignore: strong_mode_implicit_dynamic_method
+        await _channel.invokeMethod(
+          'dispose',
+          <String, dynamic>{'textureId': _textureId},
+        );
+      }
+      _lifeCycleObserver.dispose();
+    }
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  Future<void> play() async {
+    _logger.info('AsunaVideoPlayerController play');
+    Screen.keepOn(true);
+    value = value.copyWith(isPlaying: true);
+    await _applyPlayPause();
+  }
+
+  Future<void> setLooping(bool looping) async {
+    value = value.copyWith(isLooping: looping);
+  }
+
+  Future<void> pause() async {
+    _logger.info('AsunaVideoPlayerController pause');
+    Screen.keepOn(false);
+    value = value.copyWith(isPlaying: false);
+    await _applyPlayPause();
+  }
+
+  Future<void> _applyLooping() async {
+    if (!value.initialized || _isDisposed) {
+      return;
+    }
+    // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
+    // https://github.com/flutter/flutter/issues/26431
+    // ignore: strong_mode_implicit_dynamic_method
+    _channel.invokeMethod(
+        'setLooping', <String, dynamic>{'textureId': _textureId, 'looping': value.isLooping});
+  }
+
+  Future<void> _applyPlayPause() async {
+    _logger.info(
+        'AsunaVideoPlayerController _applyPlayPause(value: $value, isDisposed: $_isDisposed)');
+    if (!value.initialized || _isDisposed) {
+      return;
+    }
+    if (value.isPlaying) {
+      await _channel.invokeMethod('play', <String, dynamic>{'textureId': _textureId});
+      _timer = Timer.periodic(const Duration(milliseconds: 500), (Timer timer) async {
+        if (!value.isPlaying) {
+          timer?.cancel();
+        }
+        if (_isDisposed) {
+          return;
+        }
+        final Duration newPosition = await position;
+        if (_isDisposed) {
+          return;
+        }
+        value = value.copyWith(position: newPosition);
+      });
+    } else {
+      _timer?.cancel();
+      // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
+      // https://github.com/flutter/flutter/issues/26431
+      // ignore: strong_mode_implicit_dynamic_method
+      await _channel.invokeMethod('pause', <String, dynamic>{'textureId': _textureId});
+    }
+  }
+
+  Future<void> _applyVolume() async {
+    if (!value.initialized || _isDisposed) {
+      return;
+    }
+    // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
+    // https://github.com/flutter/flutter/issues/26431
+    // ignore: strong_mode_implicit_dynamic_method
+    await _channel.invokeMethod(
+        'setVolume', <String, dynamic>{'textureId': _textureId, 'volume': value.volume});
+  }
+
+  Future<Duration> get position async {
+    if (_isDisposed) {
+      return null;
+    }
+    return Duration(
+      // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
+      // https://github.com/flutter/flutter/issues/26431
+      // ignore: strong_mode_implicit_dynamic_method
+      milliseconds:
+          await _channel.invokeMethod('position', <String, dynamic>{'textureId': textureId}),
+    );
+  }
+
+  Future<void> seekTo(Duration moment) async {
+    if (_isDisposed) {
+      return;
+    }
+    if (moment > value.duration) {
+      moment = value.duration;
+    } else if (moment < const Duration()) {
+      moment = const Duration();
+    }
+    await _channel.invokeMethod('seekTo', <String, dynamic>{
+      'textureId': _textureId,
+      'location': moment.inMilliseconds,
+    });
+    value = value.copyWith(position: moment);
+  }
+
+  /// Sets the audio volume of [this].
+  ///
+  /// [volume] indicates a value between 0.0 (silent) and 1.0 (full volume) on a
+  /// linear scale.
+  Future<void> setVolume(double volume) async {
+    _logger.info('AsunaVideoPlayerController setVolume($volume)');
+    value = value.copyWith(volume: volume.clamp(0.0, 1.0));
+    await _applyVolume();
+  }
+}
+
+class _VideoAppLifeCycleObserver extends Object with WidgetsBindingObserver {
+  bool _wasPlayingBeforePause = false;
+  final AsunaVideoPlayerController _controller;
+
+  _VideoAppLifeCycleObserver(this._controller);
+
+  void initialize() {
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+        _wasPlayingBeforePause = _controller.value.isPlaying;
+        _controller.pause();
+        break;
+      case AppLifecycleState.resumed:
+        if (_wasPlayingBeforePause) {
+          _controller.play();
+        }
+        break;
+      default:
+    }
+  }
+
+  void dispose() {
+    _logger.info('AsunaVideoPlayerController dispose ...');
+    WidgetsBinding.instance.removeObserver(this);
+  }
+}
+
+class AsunaVideoPlayer extends StatefulWidget {
+  final AsunaVideoPlayerController controller;
+
+  const AsunaVideoPlayer(this.controller);
+
+  @override
+  State<StatefulWidget> createState() => _AsunaVideoPlayerState();
+}
+
+class _AsunaVideoPlayerState extends State<AsunaVideoPlayer> {
+  VoidCallback _listener;
+  int _textureId;
+
+  _AsunaVideoPlayerState() {
+    _listener = () {
+      final int newTextureId = widget.controller.textureId;
+      if (newTextureId != _textureId) {
+        setState(() {
+          _textureId = newTextureId;
+        });
+      }
+    };
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _textureId = widget.controller.textureId;
+    // Need to listen for initialization events since the actual texture ID
+    // becomes available after asynchronous initialization finishes.
+    widget.controller.addListener(_listener);
+  }
+
+  @override
+  void didUpdateWidget(AsunaVideoPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    oldWidget.controller.removeListener(_listener);
+    _textureId = widget.controller.textureId;
+    widget.controller.addListener(_listener);
+  }
+
+  @override
+  void deactivate() {
+    super.deactivate();
+    widget.controller.removeListener(_listener);
+  }
+
+  @override
+  Widget build(BuildContext context) => _textureId == null
+      ? Container(child: Text("no texture found"))
+      : Texture(textureId: _textureId);
 }
 
 // --------------------------------------------------------------
@@ -500,6 +581,7 @@ class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
 
   @override
   void deactivate() {
+    _logger.info('_VideoProgressIndicatorState deactivate ...');
     controller.removeListener(listener);
     super.deactivate();
   }

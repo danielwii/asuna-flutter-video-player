@@ -6,6 +6,11 @@
     -->
     <application
         android:label="asuna_video_player_example"
-        tools:replace="android:label" />
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:vmSafeMode="false"
+        />
+        <!--tools:replace="android:label,android:usesCleartextTraffic"-->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 </manifest>
