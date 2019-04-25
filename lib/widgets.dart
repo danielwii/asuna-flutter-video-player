@@ -403,7 +403,8 @@ class AspectRatioVideoState extends State<AspectRatioVideo> {
         ),
       );
     } else {
-      return Container();
+      return Container(
+          color: Colors.black, child: const Center(child: const CircularProgressIndicator()));
     }
   }
 }
