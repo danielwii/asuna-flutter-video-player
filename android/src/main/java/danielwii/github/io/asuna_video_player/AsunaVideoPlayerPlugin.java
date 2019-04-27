@@ -23,7 +23,6 @@ import io.flutter.view.TextureRegistry;
 /**
  * AsunaVideoPlayerPlugin
  */
-@TargetApi(Build.VERSION_CODES.M)
 public class AsunaVideoPlayerPlugin implements MethodCallHandler {
     private static final String TAG = AsunaVideoPlayerPlugin.class.getSimpleName();
 
@@ -95,8 +94,6 @@ public class AsunaVideoPlayerPlugin implements MethodCallHandler {
 
 
     private AsunaVideoPlayerPlugin(Registrar registrar) {
-        Log.d(TAG, String.format("NetworkSecurityPolicy.isCleartextTrafficPermitted(%s)",
-                NetworkSecurityPolicy.getInstance().isCleartextTrafficPermitted()));
         Log.d(TAG, String.format("init with activity...%d/%d", Build.VERSION.SDK_INT, Build.VERSION_CODES.M));
         mRegistrar = registrar;
         mVideoPlayers = new LongSparseArray<>();

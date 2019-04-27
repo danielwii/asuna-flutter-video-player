@@ -13,8 +13,8 @@ plugins {
     id "com.github.ben-manes.versions" version "0.21.0"
 }
 
-def PLUGIN = "video_player";
-def ANDROIDX_WARNING = "flutterPluginsAndroidXWarning";
+def PLUGIN = "asuna_video_player"
+def ANDROIDX_WARNING = "flutterPluginsAndroidXWarning"
 gradle.buildFinished { buildResult ->
     if (buildResult.failure && !rootProject.ext.has(ANDROIDX_WARNING)) {
         println '         *********************************************************'
@@ -22,7 +22,7 @@ gradle.buildFinished { buildResult ->
         println '         See https://goo.gl/CP92wY for more information on the problem and how to fix it.'
         println '         This warning prints for all Android build failures. The real root cause of the error may be unrelated.'
         println '         *********************************************************'
-        rootProject.ext.set(ANDROIDX_WARNING, true);
+        rootProject.ext.set(ANDROIDX_WARNING, true)
     }
 }
 
