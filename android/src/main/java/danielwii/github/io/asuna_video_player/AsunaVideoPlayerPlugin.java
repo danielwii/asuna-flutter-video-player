@@ -230,6 +230,7 @@ public class AsunaVideoPlayerPlugin implements MethodCallHandler {
                 break;
             case "position":
                 result.success(player.getPosition());
+                player.sendBufferingUpdate();
                 break;
             case "dispose":
                 player.dispose();

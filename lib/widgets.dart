@@ -82,7 +82,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     );
   }
 
-  final TextStyle _textStyle = const TextStyle(color: Colors.white, fontWeight: FontWeight.bold);
+  final TextStyle _textStyle = const TextStyle(color: Colors.white, fontSize: 16);
 
   void play() {
     controller.play();
@@ -141,23 +141,33 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                 SizedBox(
                     width: 30,
                     child: SizedBox.expand(
-                      child: MaterialButton(
-                        padding: EdgeInsets.all(0),
-                        onPressed: () {
-                          if (MediaQuery.of(context).orientation == Orientation.portrait) {
-                            SystemChrome.setPreferredOrientations([
-                              DeviceOrientation.landscapeLeft,
-                              DeviceOrientation.landscapeRight
-                            ]);
-                            SystemChrome.setEnabledSystemUIOverlays([]);
-                          } else {
-                            SystemChrome.setPreferredOrientations(
-                                [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-                            SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
-                          }
-                        },
-                        child: const Icon(Icons.fullscreen, color: Colors.white),
-                      ),
+                      child: WillPopScope(
+                          onWillPop: () {
+                            // back to portrait when tap back
+                            if (MediaQuery.of(context).orientation == Orientation.landscape) {
+                              SystemChrome.setPreferredOrientations(
+                                  [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                              SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
+                            }
+                            return Future.value(true);
+                          },
+                          child: MaterialButton(
+                            padding: EdgeInsets.all(0),
+                            onPressed: () {
+                              if (MediaQuery.of(context).orientation == Orientation.portrait) {
+                                SystemChrome.setPreferredOrientations([
+                                  DeviceOrientation.landscapeLeft,
+                                  DeviceOrientation.landscapeRight
+                                ]);
+                                SystemChrome.setEnabledSystemUIOverlays([]);
+                              } else {
+                                SystemChrome.setPreferredOrientations(
+                                    [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                                SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
+                              }
+                            },
+                            child: const Icon(Icons.fullscreen, color: Colors.white),
+                          )),
                     )),
               ],
             ),
@@ -360,8 +370,9 @@ class _AssetPlayerLifeCycleState extends _PlayerLifeCycleState {
 
 class AspectRatioVideo extends StatefulWidget {
   final AsunaVideoPlayerController controller;
+  final Function(String text) onSendText;
 
-  AspectRatioVideo(this.controller);
+  AspectRatioVideo(this.controller, {this.onSendText});
 
   @override
   State<StatefulWidget> createState() => AspectRatioVideoState();
@@ -370,12 +381,14 @@ class AspectRatioVideo extends StatefulWidget {
 class AspectRatioVideoState extends State<AspectRatioVideo> {
   bool initialized = false;
   VoidCallback listener;
+  TextEditingController textEditingController;
 
   AsunaVideoPlayerController get controller => widget.controller;
 
   @override
   void initState() {
     super.initState();
+    textEditingController = TextEditingController();
     listener = () {
       if (!mounted) {
         return;
@@ -390,21 +403,50 @@ class AspectRatioVideoState extends State<AspectRatioVideo> {
 
   @override
   Widget build(BuildContext context) {
-    _logger.info('AspectRatioVideoState build... $initialized');
-    if (initialized) {
-      final Size size = controller.value.size;
+    _logger.info('AspectRatioVideoState.build $initialized ${MediaQuery.of(context).orientation}');
+    final Size size = controller.value.size;
+    if (initialized && MediaQuery.of(context).orientation == Orientation.landscape)
       return Container(
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height,
         color: Colors.black,
         child: Center(
-          child: AspectRatio(
-            aspectRatio: size.width / size.height,
-            child: VideoPlayPause(controller),
-          ),
+          child: initialized
+              ? AspectRatio(
+                  aspectRatio: size.width / size.height,
+                  child: VideoPlayPause(controller),
+                )
+              : const CircularProgressIndicator(),
         ),
       );
-    } else {
-      return Container(
-          color: Colors.black, child: const Center(child: const CircularProgressIndicator()));
-    }
+
+    return Column(
+      children: <Widget>[
+        Container(
+          width: MediaQuery.of(context).size.width,
+          height: MediaQuery.of(context).size.width * MediaQuery.of(context).size.aspectRatio,
+          color: Colors.black,
+          child: Center(
+            child: initialized
+                ? AspectRatio(
+                    aspectRatio: size.width / size.height,
+                    child: VideoPlayPause(controller),
+                  )
+                : const CircularProgressIndicator(),
+          ),
+        ),
+        widget.onSendText != null
+            ? Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                    controller: textEditingController,
+                    maxLength: 20,
+                    onSubmitted: (text) {
+                      widget.onSendText(text);
+                      textEditingController.clear();
+                    }))
+            : const SizedBox(),
+      ],
+    );
   }
 }

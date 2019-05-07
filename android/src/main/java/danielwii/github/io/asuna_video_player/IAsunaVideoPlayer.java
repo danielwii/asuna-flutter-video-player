@@ -14,4 +14,6 @@ public interface IAsunaVideoPlayer {
     long getPosition();
 
     void dispose();
+
+    void sendBufferingUpdate();
 }

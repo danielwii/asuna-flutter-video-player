@@ -14,7 +14,6 @@ import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
-import com.google.android.exoplayer2.extractor.ts.DefaultTsPayloadReaderFactory;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.dash.DashMediaSource;
@@ -40,7 +39,7 @@ import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.view.TextureRegistry;
 
-public class EXOVideoPlayerAdapter implements IAsunaVideoPlayer {
+public class EXOVideoPlayerAdapter extends AbstractAsunaVideoPlayer {
     private static final String TAG = EXOVideoPlayerAdapter.class.getSimpleName();
 
     private SimpleExoPlayer                     exoPlayer;
@@ -66,7 +65,7 @@ public class EXOVideoPlayerAdapter implements IAsunaVideoPlayer {
         Uri uri = Uri.parse(dataSource);
 
         DataSource.Factory dataSourceFactory;
-        if (Objects.equals(uri.getScheme(), "asset") || Objects.equals(uri.getScheme(), "file")) {
+        if (isFileOrAsset(uri)) {
             dataSourceFactory = new DefaultDataSourceFactory(context, "ExoPlayer");
         } else {
             dataSourceFactory = new DefaultHttpDataSourceFactory(
@@ -184,12 +183,7 @@ public class EXOVideoPlayerAdapter implements IAsunaVideoPlayer {
             @Override
             public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
                 if (playbackState == Player.STATE_BUFFERING) {
-                    Map<String, Object> event = new HashMap<>();
-                    event.put("event", "bufferingUpdate");
-                    List<Integer> range = Arrays.asList(0, exoPlayer.getBufferedPercentage());
-                    // iOS supports a list of buffered ranges, so here is a list with a single range.
-                    event.put("values", Collections.singletonList(range));
-                    eventSink.success(event);
+                    sendBufferingUpdate();
                 } else if (playbackState == Player.STATE_READY) {
                     if (!isInitialized) {
                         isInitialized = true;
@@ -214,6 +208,15 @@ public class EXOVideoPlayerAdapter implements IAsunaVideoPlayer {
         Map<String, Object> reply = new HashMap<>();
         reply.put("textureId", textureEntry.id());
         result.success(reply);
+    }
+
+    public void sendBufferingUpdate() {
+        Map<String, Object> event = new HashMap<>();
+        event.put("event", "bufferingUpdate");
+        List<? extends Number> range = Arrays.asList(0, exoPlayer.getBufferedPercentage());
+        // iOS supports a list of buffered ranges, so here is a list with a single range.
+        event.put("values", Collections.singletonList(range));
+        eventSink.success(event);
     }
 
     @SuppressWarnings("deprecation")
