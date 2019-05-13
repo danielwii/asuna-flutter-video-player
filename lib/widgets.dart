@@ -22,10 +22,11 @@ class VideoPlayPause extends StatefulWidget {
 class _VideoPlayPauseState extends State<VideoPlayPause> {
   VoidCallback listener;
   bool isLayoutVisible;
+  bool inactive;
 
   _VideoPlayPauseState() {
     listener = () {
-      setState(() {});
+      if (isLayoutVisible && !inactive) setState(() {});
     };
   }
 
@@ -34,6 +35,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   @override
   void initState() {
     _logger.info('_VideoPlayPauseState.initState ...');
+    inactive = false;
     super.initState();
     controller.addListener(listener);
     isLayoutVisible = !controller.value.isPlaying;
@@ -44,6 +46,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   @override
   void deactivate() {
     _logger.info('_VideoPlayPauseState.deactivate ... pause');
+    inactive = true;
     controller.pause();
 //    controller.setVolume(0.0);
     controller.removeListener(listener);
@@ -82,7 +85,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     );
   }
 
-  final TextStyle _textStyle = const TextStyle(color: Colors.white, fontSize: 16);
+  final TextStyle _textStyle = const TextStyle(color: Colors.white, fontSize: 12);
 
   void play() {
     controller.play();
@@ -132,7 +135,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                 SizedBox(
                   width: 85,
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 6),
                     child: Text(
                         '${position.inMinutes}:${position.inSeconds % 60}/${duration.inMinutes}:${duration.inSeconds % 60}',
                         style: _textStyle),
@@ -337,6 +340,7 @@ abstract class _PlayerLifeCycleState extends State<PlayerLifeCycle> {
   @override
   void deactivate() {
     _logger.info('_PlayerLifeCycleState.deactive');
+    controller.deactivate();
     super.deactivate();
   }
 
@@ -403,17 +407,20 @@ class AspectRatioVideoState extends State<AspectRatioVideo> {
 
   @override
   Widget build(BuildContext context) {
-    _logger.info('AspectRatioVideoState.build $initialized ${MediaQuery.of(context).orientation}');
+    _logger.info(
+        'AspectRatioVideoState.build initialized($initialized) ${MediaQuery.of(context).orientation}');
     final Size size = controller.value.size;
-    if (initialized && MediaQuery.of(context).orientation == Orientation.landscape)
+    final videoRatio = size != null ? size.width / size.height : 1;
+    if (MediaQuery.of(context).orientation == Orientation.landscape)
       return Container(
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,
         color: Colors.black,
-        child: Center(
+        child: Align(
+          alignment: Alignment.center,
           child: initialized
               ? AspectRatio(
-                  aspectRatio: size.width / size.height,
+                  aspectRatio: videoRatio,
                   child: VideoPlayPause(controller),
                 )
               : const CircularProgressIndicator(),
@@ -424,12 +431,13 @@ class AspectRatioVideoState extends State<AspectRatioVideo> {
       children: <Widget>[
         Container(
           width: MediaQuery.of(context).size.width,
-          height: MediaQuery.of(context).size.width * MediaQuery.of(context).size.aspectRatio,
+          height: MediaQuery.of(context).size.width / videoRatio,
           color: Colors.black,
-          child: Center(
+          child: Align(
+            alignment: Alignment.center,
             child: initialized
                 ? AspectRatio(
-                    aspectRatio: size.width / size.height,
+                    aspectRatio: videoRatio,
                     child: VideoPlayPause(controller),
                   )
                 : const CircularProgressIndicator(),

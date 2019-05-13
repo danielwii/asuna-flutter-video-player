@@ -137,6 +137,9 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
   int _textureId;
   Timer _timer;
   bool _isDisposed = false;
+
+  /// used to avoid exceptions in listener when widget being deactivated
+  bool _isDeactivated = false;
   Completer<void> _creatingCompleter;
   StreamSubscription<dynamic> _eventSubscription;
   _VideoAppLifeCycleObserver _lifeCycleObserver;
@@ -243,6 +246,10 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
 
   EventChannel _eventChannelFor(int textureId) =>
       EventChannel('asuna_video_player/videoEvents$textureId');
+
+  deactivate() {
+    _isDeactivated = true;
+  }
 
   @override
   Future<void> dispose() async {
@@ -560,13 +567,11 @@ class VideoProgressIndicator extends StatefulWidget {
 
 class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
   VoidCallback listener;
+  var inactive;
 
   _VideoProgressIndicatorState() {
     listener = () {
-      if (!mounted) {
-        return;
-      }
-      setState(() {});
+      if (mounted && !widget.controller._isDeactivated) setState(() {});
     };
   }
 
@@ -575,6 +580,7 @@ class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
 
   @override
   void initState() {
+    inactive = false;
     super.initState();
     controller.addListener(listener);
   }
@@ -582,6 +588,7 @@ class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
   @override
   void deactivate() {
     _logger.info('_VideoProgressIndicatorState deactivate ...');
+    inactive = true;
     controller.removeListener(listener);
     super.deactivate();
   }
