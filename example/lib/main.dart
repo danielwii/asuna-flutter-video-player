@@ -3,9 +3,16 @@ import 'dart:math';
 import 'package:asuna_video_player/asuna_video_player.dart';
 import 'package:flutter_barrage/flutter_barrage.dart';
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 import 'package:screen/screen.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  Logger.root.level = Level.INFO;
+  Logger.root.onRecord.listen((LogRecord rec) {
+    print('${rec.loggerName} ${rec.level.name}: ${rec.time}: ${rec.message}');
+  });
+  runApp(MyApp());
+}
 
 class MyApp extends StatefulWidget {
   @override
@@ -34,10 +41,10 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     print('main.build ...');
 //    return VideoApp();
-
+/*
     return MaterialApp(
       home: Scaffold(
-        /*
+        */ /*
         floatingActionButton: FloatingActionButton(
           onPressed: () {
             setState(() {
@@ -49,7 +56,7 @@ class _MyAppState extends State<MyApp> {
           child: Icon(
             playerController?.value?.isPlaying ?? false ? Icons.pause : Icons.play_arrow,
           ),
-        ),*/
+        ),*/ /*
         body: SafeArea(
           child: Stack(
             children: <Widget>[
@@ -78,7 +85,7 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
       ),
-    );
+    );*/
 /*
     List<Bullet> bullets = const <Bullet>[
       const Bullet(child: Text('2423423'), showTime: 1200),

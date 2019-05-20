@@ -200,8 +200,6 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
     }
 
     void eventListener(dynamic event) {
-      _logger.info(event);
-
       final Map<dynamic, dynamic> map = event;
       switch (map['event']) {
         case 'initialized':

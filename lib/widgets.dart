@@ -178,10 +178,15 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
         ),
       ),
       Center(
-        child: AnimatedOpacity(
-          opacity: controller.value.isPlaying ? 0.0 : 1.0,
-          duration: const Duration(milliseconds: 300),
-          child: const Icon(Icons.pause, size: 100.0, color: Colors.white54),
+        child: InkWell(
+          onTap: () {
+            controller.value.isPlaying ? pause() : play();
+          },
+          child: AnimatedOpacity(
+            opacity: controller.value.isPlaying ? 0.0 : 1.0,
+            duration: const Duration(milliseconds: 300),
+            child: const Icon(Icons.pause, size: 100.0, color: Colors.white54),
+          ),
         ),
       ),
     ];
@@ -233,10 +238,9 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
         _buildGesture(),
         Center(child: controller.value.isBuffering ? const CircularProgressIndicator() : null),
       ]..addAll(isLayoutVisible
-          ? _buildPortraitLayout() ??
-              (MediaQuery.of(context).orientation == Orientation.portrait
-                  ? _buildPortraitLayout()
-                  : _buildLandscapeLayout())
+          ? (MediaQuery.of(context).orientation == Orientation.portrait
+              ? _buildPortraitLayout()
+              : _buildLandscapeLayout())
           : [const SizedBox()]),
     );
   }
