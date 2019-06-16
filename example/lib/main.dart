@@ -126,16 +126,18 @@ class _MyAppState extends State<MyApp> {
             ),
           ),
           body: SafeArea(
-            child: Stack(
+            child: Column(
               children: <Widget>[
-                Positioned(
+                Container(
                   width: MediaQuery.of(context).size.width,
                   height:
                       MediaQuery.of(context).size.width * MediaQuery.of(context).size.aspectRatio,
+                  child: Container(
+                    color: Colors.pink,
                   child: BarrageWall(
                     debug: true,
                     timelineNotifier: timelineNotifier,
-                    bullets: [] ?? bullets,
+                      bullets: bullets,
                     child: NetworkPlayerLifeCycle(
                       "http://10.0.2.2:8000/big_buck_bunny_720p_20mb.mp4",
 //                      "http://192.168.0.100:8000/big_buck_bunny_720p_20mb.mp4",
@@ -154,6 +156,16 @@ class _MyAppState extends State<MyApp> {
                     ),
                   ),
                 ),
+                ),
+                Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextField(
+                        controller: textEditingController,
+                        maxLength: 20,
+                        onSubmitted: (text) {
+                          print('onSendText $text');
+                          textEditingController.clear();
+                        }))
               ],
             ),
           ),
