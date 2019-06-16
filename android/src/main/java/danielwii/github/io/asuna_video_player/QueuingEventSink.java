@@ -60,7 +60,6 @@ final class QueuingEventSink implements EventChannel.EventSink {
 
     @Override
     public void success(Object event) {
-        Log.d(TAG, event.toString());
         enqueue(event);
         maybeFlush();
     }

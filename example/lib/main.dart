@@ -24,10 +24,13 @@ class _MyAppState extends State<MyApp> {
   ValueNotifier<BarrageValue> timelineNotifier;
   Random random = new Random();
 
+  TextEditingController textEditingController;
+
   @override
   void initState() {
     super.initState();
     timelineNotifier = ValueNotifier(BarrageValue());
+    textEditingController = TextEditingController();
   }
 
   @override

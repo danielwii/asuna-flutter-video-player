@@ -459,10 +459,17 @@ class _AsunaVideoPlayerState extends State<AsunaVideoPlayer> {
     widget.controller.removeListener(_listener);
   }
 
+  /// video texture
   @override
-  Widget build(BuildContext context) => _textureId == null
-      ? Container(child: Text("no texture found"))
-      : Texture(textureId: _textureId);
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, snapshot) {
+      _logger.info('video box is $snapshot');
+
+      return _textureId == null
+          ? Container(child: Text("no texture found"))
+          : Texture(textureId: _textureId);
+    });
+  }
 }
 
 // --------------------------------------------------------------

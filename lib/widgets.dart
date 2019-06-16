@@ -23,6 +23,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   VoidCallback listener;
   bool isLayoutVisible;
   bool inactive;
+  double videoRatio;
 
   _VideoPlayPauseState() {
     listener = () {
@@ -39,6 +40,9 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     super.initState();
     controller.addListener(listener);
     isLayoutVisible = !controller.value.isPlaying;
+
+    final Size size = controller.value.size;
+    videoRatio = size != null ? size.width / size.height : 1;
 //    controller.setVolume(1.0);
 //    controller.play();
   }
@@ -67,7 +71,9 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
         swipeDetectionBehavior: SwipeDetectionBehavior.continuousDistinct,
       ),
       child: GestureDetector(
-        child: AsunaVideoPlayer(controller),
+        child: Align(
+            alignment: Alignment.center,
+            child: AspectRatio(aspectRatio: videoRatio, child: AsunaVideoPlayer(controller))),
         onTap: () {
           if (controller.value.isPlaying) {
             setState(() => isLayoutVisible = true);
@@ -232,17 +238,23 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.passthrough,
-      children: [
-        _buildGesture(),
-        Center(child: controller.value.isBuffering ? const CircularProgressIndicator() : null),
-      ]..addAll(isLayoutVisible
-          ? (MediaQuery.of(context).orientation == Orientation.portrait
-              ? _buildPortraitLayout()
-              : _buildLandscapeLayout())
-          : [const SizedBox()]),
-    );
+    return LayoutBuilder(builder: (context, snapshot) {
+      _logger.info(
+          'layout buidler view width is ${MediaQuery.of(context).size.width}, view height is ${MediaQuery.of(context).size.height}');
+      _logger.info('layout buidler snapshot is $snapshot');
+
+      return Stack(
+        fit: StackFit.passthrough,
+        children: [
+          _buildGesture(),
+          Center(child: controller.value.isBuffering ? const CircularProgressIndicator() : null),
+        ]..addAll(isLayoutVisible
+            ? (MediaQuery.of(context).orientation == Orientation.portrait
+                ? _buildPortraitLayout()
+                : _buildLandscapeLayout())
+            : [const SizedBox()]),
+      );
+    });
   }
 }
 
@@ -378,9 +390,8 @@ class _AssetPlayerLifeCycleState extends _PlayerLifeCycleState {
 
 class AspectRatioVideo extends StatefulWidget {
   final AsunaVideoPlayerController controller;
-  final Function(String text) onSendText;
 
-  AspectRatioVideo(this.controller, {this.onSendText});
+  AspectRatioVideo(this.controller);
 
   @override
   State<StatefulWidget> createState() => AspectRatioVideoState();
@@ -389,14 +400,12 @@ class AspectRatioVideo extends StatefulWidget {
 class AspectRatioVideoState extends State<AspectRatioVideo> {
   bool initialized = false;
   VoidCallback listener;
-  TextEditingController textEditingController;
 
   AsunaVideoPlayerController get controller => widget.controller;
 
   @override
   void initState() {
     super.initState();
-    textEditingController = TextEditingController();
     listener = () {
       if (!mounted) {
         return;
@@ -413,52 +422,25 @@ class AspectRatioVideoState extends State<AspectRatioVideo> {
   Widget build(BuildContext context) {
     _logger.info(
         'AspectRatioVideoState.build initialized($initialized) ${MediaQuery.of(context).orientation}');
-    final Size size = controller.value.size;
-    final videoRatio = size != null ? size.width / size.height : 1;
-    if (MediaQuery.of(context).orientation == Orientation.landscape)
+
+    if (MediaQuery.of(context).orientation == Orientation.landscape) {
       return Container(
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,
         color: Colors.black,
         child: Align(
           alignment: Alignment.center,
-          child: initialized
-              ? AspectRatio(
-                  aspectRatio: videoRatio,
-                  child: VideoPlayPause(controller),
-                )
-              : const CircularProgressIndicator(),
+          child: initialized ? VideoPlayPause(controller) : const CircularProgressIndicator(),
         ),
       );
+    }
 
-    return Column(
-      children: <Widget>[
-        Container(
-          width: MediaQuery.of(context).size.width,
-          height: MediaQuery.of(context).size.width / videoRatio,
-          color: Colors.black,
-          child: Align(
-            alignment: Alignment.center,
-            child: initialized
-                ? AspectRatio(
-                    aspectRatio: videoRatio,
-                    child: VideoPlayPause(controller),
-                  )
-                : const CircularProgressIndicator(),
-          ),
-        ),
-        widget.onSendText != null
-            ? Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: TextField(
-                    controller: textEditingController,
-                    maxLength: 20,
-                    onSubmitted: (text) {
-                      widget.onSendText(text);
-                      textEditingController.clear();
-                    }))
-            : const SizedBox(),
-      ],
+    return Container(
+      color: Colors.black,
+      child: Align(
+        alignment: Alignment.center,
+        child: initialized ? VideoPlayPause(controller) : const CircularProgressIndicator(),
+      ),
     );
   }
 }
