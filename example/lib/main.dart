@@ -65,7 +65,7 @@ class _MyAppState extends State<MyApp> {
             children: <Widget>[
               NetworkPlayerLifeCycle(
 //        'https://www.sample-videos.com/video123/mp4/240/big_buck_bunny_240p_30mb.mp4',
-                "http://10.0.2.2:8000/big_buck_bunny_720p_20mb.mp4",
+//                "http://10.0.2.2:8000/big_buck_bunny_720p_20mb.mp4",
 //                "http://192.168.0.100:8000/big_buck_bunny_720p_20mb.mp4",
                 (BuildContext context, AsunaVideoPlayerController controller) {
                   playerController = controller;
@@ -134,28 +134,29 @@ class _MyAppState extends State<MyApp> {
                       MediaQuery.of(context).size.width * MediaQuery.of(context).size.aspectRatio,
                   child: Container(
                     color: Colors.pink,
-                  child: BarrageWall(
-                    debug: true,
-                    timelineNotifier: timelineNotifier,
+                    child: BarrageWall(
+                      debug: true,
+                      timelineNotifier: timelineNotifier,
                       bullets: bullets,
-                    child: NetworkPlayerLifeCycle(
-                      "http://10.0.2.2:8000/big_buck_bunny_720p_20mb.mp4",
-//                      "http://192.168.0.100:8000/big_buck_bunny_720p_20mb.mp4",
-                      (BuildContext context, AsunaVideoPlayerController controller) {
-                        playerController = controller;
-                        controller.addListener(() {
-                          print('update ${controller.value}');
-                          timelineNotifier.value = timelineNotifier.value.copyWith(
-                            timeline: controller.value.position.inMilliseconds,
-                            isPlaying: controller.value.isPlaying,
-                          );
-                        });
-                        print('NetworkPlayerLifeCycle.build ...');
-                        return AspectRatioVideo(controller);
-                      },
+                      child: NetworkPlayerLifeCycle(
+//                        'http://www.sample-videos.com/video123/mp4/720/big_buck_bunny_720p_20mb.mp4',
+                        'http://10.0.2.2:8000/big_buck_bunny_720p_20mb.mp4',
+//                        'http://192.168.0.100:8000/big_buck_bunny_720p_20mb.mp4',
+                        (BuildContext context, AsunaVideoPlayerController controller) {
+                          playerController = controller;
+                          controller.addListener(() {
+//                            print('update ${controller.value}');
+                            timelineNotifier.value = timelineNotifier.value.copyWith(
+                              timeline: controller.value.position.inMilliseconds,
+                              isPlaying: controller.value.isPlaying,
+                            );
+                          });
+                          print('NetworkPlayerLifeCycle.build ...');
+                          return AspectRatioVideo(controller);
+                        },
+                      ),
                     ),
                   ),
-                ),
                 ),
                 Padding(
                     padding: const EdgeInsets.all(8.0),
