@@ -38,6 +38,7 @@ import java.util.Objects;
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.view.TextureRegistry;
+import timber.log.Timber;
 
 public class EXOVideoPlayerAdapter extends AbstractAsunaVideoPlayer {
     private static final String TAG = EXOVideoPlayerAdapter.class.getSimpleName();
@@ -58,7 +59,7 @@ public class EXOVideoPlayerAdapter extends AbstractAsunaVideoPlayer {
         this.eventChannel = eventChannel;
         this.textureEntry = textureEntry;
 
-        Log.d(TAG, "create simple exo-player...");
+        Timber.tag(TAG).d("create simple exo-player...");
         DefaultTrackSelector trackSelector = new DefaultTrackSelector();
         exoPlayer = ExoPlayerFactory.newSimpleInstance(context, trackSelector);
 
@@ -131,7 +132,7 @@ public class EXOVideoPlayerAdapter extends AbstractAsunaVideoPlayer {
     private MediaSource buildMediaSource(
             Uri uri, DataSource.Factory mediaDataSourceFactory, Context context) {
         int type = Util.inferContentType(uri.getLastPathSegment());
-        Log.d(TAG, "generate media-source by type " + type);
+        Timber.tag(TAG).d("generate media-source by type %d", type);
         switch (type) {
             case C.TYPE_SS:
                 return new SsMediaSource.Factory(
@@ -161,11 +162,11 @@ public class EXOVideoPlayerAdapter extends AbstractAsunaVideoPlayer {
             EventChannel eventChannel,
             TextureRegistry.SurfaceTextureEntry textureEntry,
             MethodChannel.Result result) {
-        Log.d(TAG, "exo-player setupVideoPlayer..." + textureEntry.id());
+        Timber.tag(TAG).d("exo-player setupVideoPlayer...%s", textureEntry.id());
         eventChannel.setStreamHandler(new EventChannel.StreamHandler() {
             @Override
             public void onListen(Object arguments, EventChannel.EventSink sink) {
-                Log.d(TAG, "eventChannel.onListen: " + sink);
+                Timber.tag(TAG).d("eventChannel.onListen: %s", sink);
                 eventSink.setDelegate(sink);
             }
 
@@ -173,10 +174,10 @@ public class EXOVideoPlayerAdapter extends AbstractAsunaVideoPlayer {
             public void onCancel(Object arguments) { eventSink.setDelegate(null); }
         });
 
-        Log.d(TAG, "exo-player setupVideoPlayer... create surface...");
+        Timber.tag(TAG).d("exo-player setupVideoPlayer... create surface...");
         surface = new Surface(textureEntry.surfaceTexture());
         exoPlayer.setVideoSurface(surface);
-        Log.d(TAG, "exo-player setupVideoPlayer... setup audio attributes...");
+        Timber.tag(TAG).d("exo-player setupVideoPlayer... setup audio attributes...");
         setAudioAttributes(exoPlayer);
 
         exoPlayer.addListener(new Player.EventListener() {
@@ -204,7 +205,7 @@ public class EXOVideoPlayerAdapter extends AbstractAsunaVideoPlayer {
             }
         });
 
-        Log.d(TAG, "exo-player setupVideoPlayer... send reply...");
+        Timber.tag(TAG).d("exo-player setupVideoPlayer... send reply...");
         Map<String, Object> reply = new HashMap<>();
         reply.put("textureId", textureEntry.id());
         result.success(reply);

@@ -19,6 +19,7 @@ import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.view.FlutterNativeView;
 import io.flutter.view.TextureRegistry;
+import timber.log.Timber;
 
 /**
  * AsunaVideoPlayerPlugin
@@ -94,7 +95,10 @@ public class AsunaVideoPlayerPlugin implements MethodCallHandler {
 
 
     private AsunaVideoPlayerPlugin(Registrar registrar) {
-        Log.d(TAG, String.format("init with activity...%d/%d", Build.VERSION.SDK_INT, Build.VERSION_CODES.M));
+        if (BuildConfig.DEBUG) {
+            Timber.plant(new Timber.DebugTree());
+        }
+        Timber.tag(TAG).d("init with activity...%d/%d", Build.VERSION.SDK_INT, Build.VERSION_CODES.M);
         mRegistrar = registrar;
         mVideoPlayers = new LongSparseArray<>();
 //        if (mActivity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -103,7 +107,7 @@ public class AsunaVideoPlayerPlugin implements MethodCallHandler {
     }
 
     public static void registerWith(Registrar registrar) {
-        Log.d(TAG, "register...");
+        Timber.tag(TAG).d("register...");
         final AsunaVideoPlayerPlugin plugin = new AsunaVideoPlayerPlugin(registrar);
 
         final MethodChannel channel = new MethodChannel(registrar.messenger(), PLUGIN_NAME);
@@ -122,7 +126,7 @@ public class AsunaVideoPlayerPlugin implements MethodCallHandler {
             MethodCall call,
             Result result,
             TextureRegistry.SurfaceTextureEntry surfaceTexture) {
-        Log.d(TAG, String.format("create... type is %s", call.<String>argument("type")));
+        Timber.tag(TAG).d("create... type is %s", call.<String>argument("type"));
 
         EventChannel eventChannel =
                 new EventChannel(mRegistrar.messenger(), PLUGIN_NAME + "/videoEvents" + surfaceTexture.id());
@@ -173,7 +177,7 @@ public class AsunaVideoPlayerPlugin implements MethodCallHandler {
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
-        Log.d(TAG, "onMethodCall:" + call.method + ", " + call.arguments);
+        Timber.tag(TAG).d("onMethodCall:%s, %s", call.method, call.arguments);
         TextureRegistry textures = mRegistrar.textures();
         if (textures == null) {
             result.error("no_activity", "asuna_video_player plugin requires a foreground activity", null);
