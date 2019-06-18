@@ -1,10 +1,13 @@
 import 'dart:math';
 
 import 'package:asuna_video_player/asuna_video_player.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_barrage/flutter_barrage.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:screen/screen.dart';
+
+final _logger = Logger('main');
 
 void main() {
   Logger.root.level = Level.INFO;
@@ -106,19 +109,41 @@ class _MyAppState extends State<MyApp> {
 //      const Bullet(child: Text('36^_^'), showTime: 65720),
     ]..addAll(List<Bullet>.generate(1000, (i) {
         final showTime = random.nextInt(60000);
-        return Bullet(child: Text('$i-$showTime}'), showTime: showTime);
+        return Bullet(
+            child: Text('$i-$showTime', style: TextStyle(color: Colors.white)), showTime: showTime);
       }).toList(growable: false));
 
     return MaterialApp(
       home: LayoutBuilder(builder: (context, snapshot) {
-        print('main.LayoutBuilder ... ${MediaQuery.of(context).size.width}');
+        print('main.LayoutBuilder ... ${MediaQuery.of(context).size}');
+
+        final width = MediaQuery.of(context).size.width;
+        final height = MediaQuery.of(context).orientation == Orientation.portrait
+            ? MediaQuery.of(context).size.width * MediaQuery.of(context).size.aspectRatio
+            : MediaQuery.of(context).size.width / MediaQuery.of(context).size.aspectRatio;
+        print('width is $width, height is $height');
+
+        if (MediaQuery.of(context).orientation == Orientation.portrait) {
+          SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
+        } else {
+          SystemChrome.setEnabledSystemUIOverlays([]);
+        }
+
         return Scaffold(
           floatingActionButton: FloatingActionButton(
             onPressed: () {
               setState(() {
+                if (MediaQuery.of(context).orientation == Orientation.landscape) {
+                  SystemChrome.setPreferredOrientations(
+                      [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                } else {
+                  SystemChrome.setPreferredOrientations(
+                      [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeLeft]);
+                  /*
                 playerController.value.isPlaying ?? false
                     ? playerController.pause()
-                    : playerController.play();
+                      : playerController.play();*/
+                }
               });
             },
             child: Icon(
@@ -129,12 +154,14 @@ class _MyAppState extends State<MyApp> {
             child: Column(
               children: <Widget>[
                 Container(
-                  width: MediaQuery.of(context).size.width,
-                  height:
-                      MediaQuery.of(context).size.width * MediaQuery.of(context).size.aspectRatio,
+                  width: width,
+                  height: height,
                   child: Container(
                     color: Colors.pink,
-                    child: BarrageWall(
+                    child: LayoutBuilder(builder: (context, snapshot) {
+                      _logger.info('main view size is ${MediaQuery.of(context).size}');
+                      _logger.info('main snapshot is $snapshot');
+                      return BarrageWall(
                       debug: true,
                       timelineNotifier: timelineNotifier,
                       bullets: bullets,
@@ -155,10 +182,12 @@ class _MyAppState extends State<MyApp> {
                           return AspectRatioVideo(controller);
                         },
                       ),
+                      );
+                    }),
                     ),
                   ),
-                ),
-                Padding(
+              ]..add(MediaQuery.of(context).orientation == Orientation.portrait
+                  ? Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: TextField(
                         controller: textEditingController,
@@ -167,7 +196,7 @@ class _MyAppState extends State<MyApp> {
                           print('onSendText $text');
                           textEditingController.clear();
                         }))
-              ],
+                  : const SizedBox()),
             ),
           ),
         );

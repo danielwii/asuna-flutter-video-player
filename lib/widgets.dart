@@ -24,6 +24,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   bool isLayoutVisible;
   bool inactive;
   double videoRatio;
+  bool isPortrait;
 
   _VideoPlayPauseState() {
     listener = () {
@@ -71,9 +72,17 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
         swipeDetectionBehavior: SwipeDetectionBehavior.continuousDistinct,
       ),
       child: GestureDetector(
-        child: Align(
-            alignment: Alignment.center,
-            child: AspectRatio(aspectRatio: videoRatio, child: AsunaVideoPlayer(controller))),
+        child: Container(
+          constraints: BoxConstraints.expand(),
+          child: Align(
+              alignment: Alignment.center,
+              child: AspectRatio(aspectRatio: videoRatio, child: AsunaVideoPlayer(controller))),
+        ),
+        onDoubleTap: () {
+          if (!isPortrait) {
+            controller.value.isPlaying ? controller.pause() : controller.play();
+          }
+        },
         onTap: () {
           if (controller.value.isPlaying) {
             setState(() => isLayoutVisible = true);
@@ -95,17 +104,29 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 
   void play() {
     controller.play();
+    /*
     if (isLayoutVisible) {
       Timer.periodic(new Duration(seconds: 1), (timer) {
         setState(() => isLayoutVisible = false);
         timer.cancel();
       });
-    }
+    }*/
   }
 
   void pause() {
     controller.pause();
   }
+
+  Widget _buildPlayPauseIndicator() => Center(
+        child: InkWell(
+          onTap: () => controller.value.isPlaying ? pause() : play(),
+          child: AnimatedOpacity(
+            opacity: controller.value.isPlaying ? 0.0 : 1.0,
+            duration: const Duration(milliseconds: 300),
+            child: const Icon(Icons.pause, size: 100.0, color: Colors.white54),
+          ),
+        ),
+      );
 
   List<Widget> _buildPortraitLayout() {
     final position = controller.value.position;
@@ -163,17 +184,11 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                           child: MaterialButton(
                             padding: EdgeInsets.all(0),
                             onPressed: () {
-                              if (MediaQuery.of(context).orientation == Orientation.portrait) {
-                                SystemChrome.setPreferredOrientations([
-                                  DeviceOrientation.landscapeLeft,
-                                  DeviceOrientation.landscapeRight
-                                ]);
-                                SystemChrome.setEnabledSystemUIOverlays([]);
-                              } else {
-                                SystemChrome.setPreferredOrientations(
-                                    [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-                                SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
-                              }
+                              SystemChrome.setPreferredOrientations([
+                                DeviceOrientation.landscapeLeft,
+                                DeviceOrientation.landscapeRight
+                              ]);
+                              SystemChrome.setEnabledSystemUIOverlays([]);
                             },
                             child: const Icon(Icons.fullscreen, color: Colors.white),
                           )),
@@ -183,18 +198,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
           ),
         ),
       ),
-      Center(
-        child: InkWell(
-          onTap: () {
-            controller.value.isPlaying ? pause() : play();
-          },
-          child: AnimatedOpacity(
-            opacity: controller.value.isPlaying ? 0.0 : 1.0,
-            duration: const Duration(milliseconds: 300),
-            child: const Icon(Icons.pause, size: 100.0, color: Colors.white54),
-          ),
-        ),
-      ),
+      _buildPlayPauseIndicator(),
     ];
   }
 
@@ -214,33 +218,22 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                 width: 40,
                 child: FlatButton(
                     onPressed: () {
-                      if (MediaQuery.of(context).orientation == Orientation.portrait) {
-                        SystemChrome.setPreferredOrientations(
-                            [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
-                      } else {
-                        SystemChrome.setPreferredOrientations(
-                            [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-                      }
+                      SystemChrome.setPreferredOrientations(
+                          [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
                     },
                     child: const Icon(Icons.fullscreen, color: Colors.white70))),
           ],
         ),
       ),
-      Center(
-        child: AnimatedOpacity(
-          opacity: controller.value.isPlaying ? 0.0 : 1.0,
-          duration: const Duration(milliseconds: 300),
-          child: const Icon(Icons.pause, size: 100.0, color: Colors.white54),
-        ),
-      ),
+      _buildPlayPauseIndicator(),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, snapshot) {
-      _logger.info(
-          'layout buidler view width is ${MediaQuery.of(context).size.width}, view height is ${MediaQuery.of(context).size.height}');
+      isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+      _logger.info('layout buidler view size is ${MediaQuery.of(context).size}');
       _logger.info('layout buidler snapshot is $snapshot');
 
       return Stack(
@@ -249,9 +242,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
           _buildGesture(),
           Center(child: controller.value.isBuffering ? const CircularProgressIndicator() : null),
         ]..addAll(isLayoutVisible
-            ? (MediaQuery.of(context).orientation == Orientation.portrait
-                ? _buildPortraitLayout()
-                : _buildLandscapeLayout())
+            ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
             : [const SizedBox()]),
       );
     });
@@ -422,18 +413,6 @@ class AspectRatioVideoState extends State<AspectRatioVideo> {
   Widget build(BuildContext context) {
     _logger.info(
         'AspectRatioVideoState.build initialized($initialized) ${MediaQuery.of(context).orientation}');
-
-    if (MediaQuery.of(context).orientation == Orientation.landscape) {
-      return Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
-        color: Colors.black,
-        child: Align(
-          alignment: Alignment.center,
-          child: initialized ? VideoPlayPause(controller) : const CircularProgressIndicator(),
-        ),
-      );
-    }
 
     return Container(
       color: Colors.black,
