@@ -462,13 +462,9 @@ class _AsunaVideoPlayerState extends State<AsunaVideoPlayer> {
   /// video texture
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, snapshot) {
-      _logger.info('video box is $snapshot');
-
-      return _textureId == null
-          ? Container(child: Text("no texture found"))
-          : Texture(textureId: _textureId);
-    });
+    return _textureId == null
+        ? Container(child: Text("no texture found"))
+        : Texture(textureId: _textureId);
   }
 }
 

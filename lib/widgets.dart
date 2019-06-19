@@ -233,8 +233,8 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, snapshot) {
       isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
-      _logger.info('layout buidler view size is ${MediaQuery.of(context).size}');
-      _logger.info('layout buidler snapshot is $snapshot');
+//      _logger.info('layout buidler view size is ${MediaQuery.of(context).size}');
+//      _logger.info('layout buidler snapshot is $snapshot');
 
       return Stack(
         fit: StackFit.passthrough,

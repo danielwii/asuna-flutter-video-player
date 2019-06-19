@@ -177,7 +177,9 @@ public class AsunaVideoPlayerPlugin implements MethodCallHandler {
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
-        Timber.tag(TAG).d("onMethodCall:%s, %s", call.method, call.arguments);
+        if (!call.method.equalsIgnoreCase("position")) {
+            Timber.tag(TAG).d("onMethodCall:%s, %s", call.method, call.arguments);
+        }
         TextureRegistry textures = mRegistrar.textures();
         if (textures == null) {
             result.error("no_activity", "asuna_video_player plugin requires a foreground activity", null);
