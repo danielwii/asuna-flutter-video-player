@@ -162,9 +162,10 @@ class _MyAppState extends State<MyApp> {
                       _logger.info('main view size is ${MediaQuery.of(context).size}');
                       _logger.info('main snapshot is $snapshot');
                       return BarrageWall(
-                      debug: true,
+                        debug: false,
                       timelineNotifier: timelineNotifier,
                       bullets: bullets,
+                        safeBottomHeight: 40,
                       child: NetworkPlayerLifeCycle(
 //                        'http://www.sample-videos.com/video123/mp4/720/big_buck_bunny_720p_20mb.mp4',
                         'http://10.0.2.2:8000/big_buck_bunny_720p_20mb.mp4',

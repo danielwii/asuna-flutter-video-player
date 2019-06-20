@@ -58,6 +58,23 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     super.deactivate();
   }
 
+  final TextStyle _textStyle = const TextStyle(color: Colors.white, fontSize: 12);
+
+  void play() {
+    controller.play();
+    /*
+    if (isLayoutVisible) {
+      Timer.periodic(new Duration(seconds: 1), (timer) {
+        setState(() => isLayoutVisible = false);
+        timer.cancel();
+      });
+    }*/
+  }
+
+  void pause() {
+    controller.pause();
+  }
+
   Widget _buildGesture() {
     return SimpleGestureDetector(
       onVerticalSwipe: (SwipeDirection direction) {
@@ -67,18 +84,17 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
         _logger.info('onHorizontalSwipe: $direction');
       },
       swipeConfig: SimpleSwipeConfig(
-        verticalThreshold: 40.0,
-        horizontalThreshold: 40.0,
-        swipeDetectionBehavior: SwipeDetectionBehavior.continuousDistinct,
-      ),
+          verticalThreshold: 40.0,
+          horizontalThreshold: 40.0,
+          swipeDetectionBehavior: SwipeDetectionBehavior.continuousDistinct),
       child: GestureDetector(
         child: Container(
-          constraints: BoxConstraints.expand(),
-          child: Align(
-              alignment: Alignment.center,
-              child: AspectRatio(
-                  aspectRatio: controller.value.aspectRatio, child: AsunaVideoPlayer(controller))),
-        ),
+            constraints: BoxConstraints.expand(),
+            child: Align(
+                alignment: Alignment.center,
+                child: AspectRatio(
+                    aspectRatio: controller.value.aspectRatio,
+                    child: AsunaVideoPlayer(controller)))),
         onDoubleTap: () {
           if (!isPortrait) {
             controller.value.isPlaying ? controller.pause() : controller.play();
@@ -101,104 +117,80 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     );
   }
 
-  final TextStyle _textStyle = const TextStyle(color: Colors.white, fontSize: 12);
-
-  void play() {
-    controller.play();
-    /*
-    if (isLayoutVisible) {
-      Timer.periodic(new Duration(seconds: 1), (timer) {
-        setState(() => isLayoutVisible = false);
-        timer.cancel();
-      });
-    }*/
-  }
-
-  void pause() {
-    controller.pause();
-  }
-
-  Widget _buildPlayPauseIndicator() => Center(
+  Widget _buildPlayPauseIndicator() {
+    _logger.info('_buildPlayPauseIndicator: playing status: ${controller.value.isPlaying}');
+    return Center(
         child: InkWell(
-          onTap: () => controller.value.isPlaying ? pause() : play(),
-          child: AnimatedOpacity(
-            opacity: controller.value.isPlaying ? 0.0 : 1.0,
-            duration: const Duration(milliseconds: 300),
-            child: const Icon(Icons.pause, size: 100.0, color: Colors.white54),
-          ),
-        ),
-      );
+            onTap: () => setState(() => controller.value.isPlaying ? pause() : play()),
+            child: AnimatedOpacity(
+                opacity: controller.value.isPlaying ? 0.0 : 1.0,
+                duration: const Duration(milliseconds: 300),
+                child: const Icon(Icons.pause, size: 100.0, color: Colors.white54))));
+  }
 
   List<Widget> _buildPortraitLayout() {
     final position = controller.value.position;
     final duration = controller.value.duration;
     return [
+      Align(alignment: Alignment.topRight, child: SizedBox(height: 24, child: Row())),
       Align(
-        alignment: Alignment.topRight,
-        child: SizedBox(
-          height: 24,
-          child: Row(),
-        ),
-      ),
-      Align(
-        alignment: Alignment.bottomCenter,
-        child: Container(
-          margin: EdgeInsets.symmetric(vertical: 6),
-          child: SizedBox(
-            height: 24,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                SizedBox(
-                    width: 40,
-                    child: MaterialButton(
-                        onPressed: () {
-                          controller.value.isPlaying ? pause() : play();
-                        },
-                        padding: EdgeInsets.all(0),
-                        child: controller.value.isPlaying
-                            ? const Icon(Icons.pause, color: Colors.white70)
-                            : const Icon(Icons.play_arrow, color: Colors.white70))),
-                Expanded(child: VideoProgressIndicator(controller, allowScrubbing: true)),
-                SizedBox(
-                  width: 85,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6),
-                    child: Text(
-                        '${position.inMinutes}:${position.inSeconds % 60}/${duration.inMinutes}:${duration.inSeconds % 60}',
-                        style: _textStyle),
-                  ),
-                ),
-                SizedBox(
-                    width: 30,
-                    child: SizedBox.expand(
-                      child: WillPopScope(
-                          onWillPop: () {
-                            // back to portrait when tap back
-                            if (MediaQuery.of(context).orientation == Orientation.landscape) {
-                              SystemChrome.setPreferredOrientations(
-                                  [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-                              SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
-                            }
-                            return Future.value(true);
-                          },
-                          child: MaterialButton(
-                            padding: EdgeInsets.all(0),
+          alignment: Alignment.bottomCenter,
+          child: Container(
+              margin: EdgeInsets.symmetric(vertical: 6),
+              child: SizedBox(
+                  height: 24,
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
+                    // play/pause button
+                    SizedBox(
+                        width: 40,
+                        child: MaterialButton(
                             onPressed: () {
-                              SystemChrome.setPreferredOrientations([
-                                DeviceOrientation.landscapeLeft,
-                                DeviceOrientation.landscapeRight
-                              ]);
-                              SystemChrome.setEnabledSystemUIOverlays([]);
+                              controller.value.isPlaying ? pause() : play();
                             },
-                            child: const Icon(Icons.fullscreen, color: Colors.white),
-                          )),
-                    )),
-              ],
-            ),
-          ),
-        ),
-      ),
+                            padding: EdgeInsets.all(0),
+                            child: controller.value.isPlaying
+                                ? const Icon(Icons.pause, color: Colors.white70)
+                                : const Icon(Icons.play_arrow, color: Colors.white70))),
+                    // progress indicator
+                    Expanded(child: VideoProgressIndicator(controller, allowScrubbing: true)),
+                    // video position info
+                    Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          '${position.inMinutes}:${position.inSeconds % 60}/${duration.inMinutes}:${duration.inSeconds % 60}',
+                          style: _textStyle,
+                        )),
+                    // fullscreen button
+                    SizedBox(
+                        width: 30,
+                        child: SizedBox.expand(
+                            child: WillPopScope(
+                                onWillPop: () {
+                                  // back to portrait when tap back
+                                  if (MediaQuery.of(context).orientation == Orientation.landscape) {
+                                    SystemChrome.setPreferredOrientations([
+                                      DeviceOrientation.portraitUp,
+                                      DeviceOrientation.portraitDown
+                                    ]);
+                                    SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
+                                  }
+                                  return Future.value(true);
+                                },
+                                child: MaterialButton(
+                                  padding: EdgeInsets.all(0),
+                                  onPressed: () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) {
+                                      SystemChrome.setPreferredOrientations([
+                                        DeviceOrientation.landscapeLeft,
+                                        DeviceOrientation.landscapeRight
+                                      ]);
+                                      SystemChrome.setEnabledSystemUIOverlays([]);
+                                      return _FullscreenPlayer(controller: controller);
+                                    }));
+                                  },
+                                  child: const Icon(Icons.fullscreen, color: Colors.white),
+                                )))),
+                  ])))),
       _buildPlayPauseIndicator(),
     ];
   }
@@ -206,26 +198,27 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   List<Widget> _buildLandscapeLayout() {
     return [
       Align(
-        alignment: Alignment.bottomCenter,
-        child: Row(
-          children: <Widget>[
+          alignment: Alignment.bottomCenter,
+          child: Row(children: <Widget>[
+            // play/pause button
             SizedBox(
                 width: 40,
                 child: controller.value.isPlaying
                     ? const Icon(Icons.play_arrow, color: Colors.white70)
                     : const Icon(Icons.pause, color: Colors.white70)),
+            // progress indicator
             Expanded(child: VideoProgressIndicator(controller, allowScrubbing: true)),
+            // fullscreen button
             SizedBox(
                 width: 40,
                 child: FlatButton(
                     onPressed: () {
                       SystemChrome.setPreferredOrientations(
                           [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                      Navigator.pop(context);
                     },
                     child: const Icon(Icons.fullscreen, color: Colors.white70))),
-          ],
-        ),
-      ),
+          ])),
       _buildPlayPauseIndicator(),
     ];
   }
@@ -234,17 +227,24 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, snapshot) {
       isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
-//      _logger.info('layout buidler view size is ${MediaQuery.of(context).size}');
-//      _logger.info('layout buidler snapshot is $snapshot');
+//      _logger.info('layout builder view size is ${MediaQuery.of(context).size}');
+//      _logger.info('layout builder snapshot is $snapshot');
+
+      final showPauseIndicator = !controller.value.isBuffering && !controller.value.isPlaying;
+      _logger.info('showPauseIndicator: $showPauseIndicator');
+      _logger.info(controller.value);
 
       return Stack(
         fit: StackFit.passthrough,
         children: [
           _buildGesture(),
-          Center(child: controller.value.isBuffering ? const CircularProgressIndicator() : null),
-        ]..addAll(isLayoutVisible
-            ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
-            : [const SizedBox()]),
+        ]
+          ..add(controller.value.isBuffering
+              ? const Center(child: const CircularProgressIndicator())
+              : const SizedBox())
+          ..addAll(isLayoutVisible
+              ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
+              : [const SizedBox()]),
       );
     });
   }
@@ -382,8 +382,9 @@ class _AssetPlayerLifeCycleState extends _PlayerLifeCycleState {
 
 class AspectRatioVideo extends StatefulWidget {
   final AsunaVideoPlayerController controller;
+  final bool autoPlay;
 
-  AspectRatioVideo(this.controller);
+  AspectRatioVideo(this.controller, {this.autoPlay = true});
 
   @override
   State<StatefulWidget> createState() => AspectRatioVideoState();
@@ -416,11 +417,29 @@ class AspectRatioVideoState extends State<AspectRatioVideo> {
         'AspectRatioVideoState.build initialized($initialized) ${MediaQuery.of(context).orientation}');
 
     return Container(
-      color: Colors.black,
-      child: Align(
-        alignment: Alignment.center,
-        child: initialized ? VideoPlayPause(controller) : const CircularProgressIndicator(),
-      ),
-    );
+        color: Colors.black,
+        child: Align(
+            alignment: Alignment.center,
+            child: initialized ? VideoPlayPause(controller) : const CircularProgressIndicator()));
+  }
+}
+
+class _FullscreenPlayer extends StatelessWidget {
+  final AsunaVideoPlayerController controller;
+
+  const _FullscreenPlayer({Key key, this.controller}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        body: Hero(
+            tag: "fullscreenPlayer",
+            child: Container(
+                color: Colors.black,
+                child: Align(
+                    alignment: Alignment.center,
+                    child: controller.value.initialized
+                        ? VideoPlayPause(controller)
+                        : const CircularProgressIndicator()))));
   }
 }

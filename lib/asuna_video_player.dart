@@ -315,7 +315,16 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
       });
     } else {
       _timer?.cancel();
-      await _channel.invokeMethod<void>('pause', <String, dynamic>{'textureId': _textureId});
+      try {
+        // may cause Unhandled Exception: PlatformException(Unknown textureId, No video player associated with texture id ?, null)
+        await _channel.invokeMethod<void>('pause', <String, dynamic>{'textureId': _textureId});
+      } catch (e) {
+        if (e is PlatformException) {
+          _logger.info('textureId($_textureId) may not exist');
+        } else {
+          _logger.warning('error: $e');
+        }
+      }
     }
   }
 
@@ -543,7 +552,7 @@ class VideoProgressIndicator extends StatefulWidget {
     this.controller, {
     VideoProgressColors colors,
     this.allowScrubbing,
-    this.padding = const EdgeInsets.only(top: 5.0),
+    this.padding = const EdgeInsets.only(top: 3.0),
   }) : colors = colors ?? VideoProgressColors();
 
   @override
