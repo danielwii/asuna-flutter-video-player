@@ -42,8 +42,8 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     controller.addListener(listener);
     isLayoutVisible = !controller.value.isPlaying;
 
-    final Size size = controller.value.size;
-    videoRatio = size != null ? size.width / size.height : 1;
+//    final Size size = controller.value.size;
+//    videoRatio = size != null ? size.width / size.height : 1;
 //    controller.setVolume(1.0);
 //    controller.play();
   }
@@ -76,7 +76,8 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
           constraints: BoxConstraints.expand(),
           child: Align(
               alignment: Alignment.center,
-              child: AspectRatio(aspectRatio: videoRatio, child: AsunaVideoPlayer(controller))),
+              child: AspectRatio(
+                  aspectRatio: controller.value.aspectRatio, child: AsunaVideoPlayer(controller))),
         ),
         onDoubleTap: () {
           if (!isPortrait) {

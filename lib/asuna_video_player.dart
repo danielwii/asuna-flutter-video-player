@@ -13,7 +13,9 @@ final _logger = Logger('AsunaVideoPlayer');
 
 typedef void EventHandler(Object event);
 
-final MethodChannel _channel = const MethodChannel('asuna_video_player')..invokeMethod("init");
+final MethodChannel _channel = const MethodChannel('asuna_video_player')
+  // This will clear all open videos on the platform when a full restart is performed.
+  ..invokeMethod<void>("init");
 
 class DurationRange {
   final Duration start;
@@ -182,11 +184,8 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
         dataSourceDescription = <String, dynamic>{'uri': dataSource};
     }
 
-    // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
-    // https://github.com/flutter/flutter/issues/26431
-    // ignore: strong_mode_implicit_dynamic_method
-    final Map<dynamic, dynamic> response =
-        await _channel.invokeMethod("create", dataSourceDescription);
+    final Map<String, dynamic> response =
+        await _channel.invokeMapMethod<String, dynamic>("create", dataSourceDescription);
 
     _logger.info('dataSourceDescription: $dataSourceDescription');
     _logger.info('response: $response');
@@ -256,10 +255,7 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
       if (!_isDisposed) {
         _timer?.cancel();
         await _eventSubscription?.cancel();
-        // TODO(amirh): remove this on when the invokeMethod update makes it to stable Flutter.
-        // https://github.com/flutter/flutter/issues/26431
-        // ignore: strong_mode_implicit_dynamic_method
-        await _channel.invokeMethod(
+        await _channel.invokeMethod<void>(
           'dispose',
           <String, dynamic>{'textureId': _textureId},
         );
@@ -292,10 +288,7 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
     if (!value.initialized || _isDisposed) {
       return;
     }
-    // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
-    // https://github.com/flutter/flutter/issues/26431
-    // ignore: strong_mode_implicit_dynamic_method
-    _channel.invokeMethod(
+    _channel.invokeMethod<void>(
         'setLooping', <String, dynamic>{'textureId': _textureId, 'looping': value.isLooping});
   }
 
@@ -306,7 +299,7 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
       return;
     }
     if (value.isPlaying) {
-      await _channel.invokeMethod('play', <String, dynamic>{'textureId': _textureId});
+      await _channel.invokeMethod<void>('play', <String, dynamic>{'textureId': _textureId});
       _timer = Timer.periodic(const Duration(milliseconds: 500), (Timer timer) async {
         if (!value.isPlaying) {
           timer?.cancel();
@@ -322,10 +315,7 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
       });
     } else {
       _timer?.cancel();
-      // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
-      // https://github.com/flutter/flutter/issues/26431
-      // ignore: strong_mode_implicit_dynamic_method
-      await _channel.invokeMethod('pause', <String, dynamic>{'textureId': _textureId});
+      await _channel.invokeMethod<void>('pause', <String, dynamic>{'textureId': _textureId});
     }
   }
 
@@ -333,10 +323,7 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
     if (!value.initialized || _isDisposed) {
       return;
     }
-    // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
-    // https://github.com/flutter/flutter/issues/26431
-    // ignore: strong_mode_implicit_dynamic_method
-    await _channel.invokeMethod(
+    await _channel.invokeMethod<void>(
         'setVolume', <String, dynamic>{'textureId': _textureId, 'volume': value.volume});
   }
 
@@ -345,11 +332,8 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
       return null;
     }
     return Duration(
-      // TODO: remove this on when the invokeMethod update makes it to stable Flutter.
-      // https://github.com/flutter/flutter/issues/26431
-      // ignore: strong_mode_implicit_dynamic_method
       milliseconds:
-          await _channel.invokeMethod('position', <String, dynamic>{'textureId': textureId}),
+          await _channel.invokeMethod<int>('position', <String, dynamic>{'textureId': textureId}),
     );
   }
 
@@ -362,7 +346,7 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
     } else if (moment < const Duration()) {
       moment = const Duration();
     }
-    await _channel.invokeMethod('seekTo', <String, dynamic>{
+    await _channel.invokeMethod<void>('seekTo', <String, dynamic>{
       'textureId': _textureId,
       'location': moment.inMilliseconds,
     });
