@@ -340,9 +340,15 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
     if (_isDisposed) {
       return null;
     }
+    final milliseconds = await _channel.invokeMethod<int>(
+      'position',
+      <String, dynamic>{'textureId': textureId},
+    ).catchError((e) {
+      _logger.warning('call postion error: $e');
+      return null;
+    });
     return Duration(
-      milliseconds:
-          await _channel.invokeMethod<int>('position', <String, dynamic>{'textureId': textureId}),
+      milliseconds: milliseconds,
     );
   }
 
