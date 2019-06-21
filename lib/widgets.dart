@@ -96,16 +96,19 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                     aspectRatio: controller.value.aspectRatio,
                     child: AsunaVideoPlayer(controller)))),
         onDoubleTap: () {
+          _logger.info('onDoubleTap ...');
           if (!isPortrait) {
             controller.value.isPlaying ? controller.pause() : controller.play();
           }
         },
         onTap: () {
+          _logger.info('onTap ...');
           if (controller.value.isPlaying) {
             setState(() => isLayoutVisible = true);
             Timer.periodic(new Duration(seconds: 3), (timer) {
+              _logger.info('check status ... playing: ${controller.value.isPlaying}');
               if (controller.value.isPlaying) {
-                setState(() => isLayoutVisible = false);
+                if (mounted) setState(() => isLayoutVisible = false);
               }
               timer.cancel();
             });
@@ -118,7 +121,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   }
 
   Widget _buildPlayPauseIndicator() {
-    _logger.info('_buildPlayPauseIndicator: playing status: ${controller.value.isPlaying}');
+//    _logger.info('_buildPlayPauseIndicator: playing status: ${controller.value.isPlaying}');
     return Center(
         child: InkWell(
             onTap: () => setState(() => controller.value.isPlaying ? pause() : play()),
@@ -225,28 +228,19 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, snapshot) {
-      isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
-//      _logger.info('layout builder view size is ${MediaQuery.of(context).size}');
-//      _logger.info('layout builder snapshot is $snapshot');
-
-      final showPauseIndicator = !controller.value.isBuffering && !controller.value.isPlaying;
-      _logger.info('showPauseIndicator: $showPauseIndicator');
-      _logger.info(controller.value);
-
-      return Stack(
-        fit: StackFit.passthrough,
-        children: [
-          _buildGesture(),
-        ]
-          ..add(controller.value.isBuffering
-              ? const Center(child: const CircularProgressIndicator())
-              : const SizedBox())
-          ..addAll(isLayoutVisible
-              ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
-              : [const SizedBox()]),
-      );
-    });
+    isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        _buildGesture(),
+      ]
+        ..add(controller.value.isBuffering
+            ? const Center(child: const CircularProgressIndicator())
+            : const SizedBox())
+        ..addAll(isLayoutVisible
+            ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
+            : [const SizedBox()]),
+    );
   }
 }
 
@@ -431,6 +425,7 @@ class _FullscreenPlayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    _logger.info('_FullscreenPlayer build');
     return Scaffold(
         body: Hero(
             tag: "fullscreenPlayer",
