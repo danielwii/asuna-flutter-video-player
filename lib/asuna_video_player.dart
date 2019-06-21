@@ -14,7 +14,7 @@ final _logger = Logger('AsunaVideoPlayer');
 typedef void EventHandler(Object event);
 
 final MethodChannel _channel = const MethodChannel('asuna_video_player')
-  // This will clear all open videos on the platform when a full restart is performed.
+// This will clear all open videos on the platform when a full restart is performed.
   ..invokeMethod<void>("init");
 
 class DurationRange {
@@ -165,6 +165,7 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
         super(_AsunaVideoPlayerValue(duration: null));
 
   int get textureId => _textureId;
+  bool get isDisposed => _isDisposed;
 
   Future<void> initialize() async {
     _logger.info('AsunaVideoPlayerController.initialize $dataSource');
@@ -279,6 +280,9 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
 
   Future<void> pause() async {
     _logger.info('AsunaVideoPlayerController pause');
+    if (_isDisposed) {
+      return;
+    }
     Screen.keepOn(false);
     value = value.copyWith(isPlaying: false);
     await _applyPlayPause();
@@ -315,16 +319,11 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
       });
     } else {
       _timer?.cancel();
-      try {
-        // may cause Unhandled Exception: PlatformException(Unknown textureId, No video player associated with texture id ?, null)
-        await _channel.invokeMethod<void>('pause', <String, dynamic>{'textureId': _textureId});
-      } catch (e) {
-        if (e is PlatformException) {
-          _logger.info('textureId($_textureId) may not exist');
-        } else {
-          _logger.warning('error: $e');
-        }
-      }
+      // may cause Unhandled Exception: PlatformException(Unknown textureId, No video player associated with texture id ?, null)
+      await _channel
+          .invokeMethod<void>('pause', <String, dynamic>{'textureId': _textureId}).catchError((e) {
+        _logger.warning('call postion error: $e');
+      });
     }
   }
 
@@ -455,7 +454,7 @@ class _AsunaVideoPlayerState extends State<AsunaVideoPlayer> {
   @override
   void deactivate() {
     super.deactivate();
-    widget.controller.removeListener(_listener);
+    if (!widget.controller.isDisposed) widget.controller.removeListener(_listener);
   }
 
   /// video texture
@@ -567,11 +566,13 @@ class VideoProgressIndicator extends StatefulWidget {
 
 class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
   VoidCallback listener;
-  var inactive;
 
   _VideoProgressIndicatorState() {
     listener = () {
-      if (mounted && !widget.controller._isDeactivated) setState(() {});
+      if (!mounted || !controller.value.isPlaying) {
+        return;
+      }
+      setState(() {});
     };
   }
 
@@ -580,15 +581,12 @@ class _VideoProgressIndicatorState extends State<VideoProgressIndicator> {
 
   @override
   void initState() {
-    inactive = false;
     super.initState();
     controller.addListener(listener);
   }
 
   @override
   void deactivate() {
-    _logger.info('_VideoProgressIndicatorState deactivate ...');
-    inactive = true;
     controller.removeListener(listener);
     super.deactivate();
   }

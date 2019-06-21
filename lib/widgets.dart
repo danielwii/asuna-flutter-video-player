@@ -52,6 +52,9 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   void deactivate() {
     _logger.info('_VideoPlayPauseState.deactivate ... pause');
     inactive = true;
+    if (controller.isDisposed) {
+      return;
+    }
     controller.pause();
 //    controller.setVolume(0.0);
     controller.removeListener(listener);
