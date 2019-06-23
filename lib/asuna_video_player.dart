@@ -268,7 +268,7 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
   }
 
   Future<void> play() async {
-    _logger.info('AsunaVideoPlayerController play');
+    _logger.info('AsunaVideoPlayerController play isDisposed: $_isDisposed');
     Screen.keepOn(true);
     value = value.copyWith(isPlaying: true);
     await _applyPlayPause();
@@ -279,7 +279,7 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
   }
 
   Future<void> pause() async {
-    _logger.info('AsunaVideoPlayerController pause');
+    _logger.info('AsunaVideoPlayerController pause isDisposed: $_isDisposed');
     if (_isDisposed) {
       return;
     }
@@ -297,8 +297,8 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
   }
 
   Future<void> _applyPlayPause() async {
-    _logger.info(
-        'AsunaVideoPlayerController _applyPlayPause(value: $value, isDisposed: $_isDisposed)');
+    _logger
+        .info('AsunaVideoPlayerController._applyPlayPause value: $value, isDisposed: $_isDisposed');
     if (!value.initialized || _isDisposed) {
       return;
     }
@@ -319,11 +319,8 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
       });
     } else {
       _timer?.cancel();
-      // may cause Unhandled Exception: PlatformException(Unknown textureId, No video player associated with texture id ?, null)
-      await _channel
-          .invokeMethod<void>('pause', <String, dynamic>{'textureId': _textureId}).catchError((e) {
-        _logger.warning('call postion error: $e');
-      });
+      _logger.info('call pause isDisposed: $_isDisposed $value');
+      await _channel.invokeMethod<void>('pause', <String, dynamic>{'textureId': _textureId});
     }
   }
 
@@ -372,7 +369,7 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
   /// [volume] indicates a value between 0.0 (silent) and 1.0 (full volume) on a
   /// linear scale.
   Future<void> setVolume(double volume) async {
-    _logger.info('AsunaVideoPlayerController setVolume($volume)');
+//    _logger.info('AsunaVideoPlayerController setVolume($volume)');
     value = value.copyWith(volume: volume.clamp(0.0, 1.0));
     await _applyVolume();
   }
@@ -557,7 +554,7 @@ class VideoProgressIndicator extends StatefulWidget {
     this.controller, {
     VideoProgressColors colors,
     this.allowScrubbing,
-    this.padding = const EdgeInsets.only(top: 3.0),
+    this.padding = const EdgeInsets.only(top: 12.0, bottom: 9.0),
   }) : colors = colors ?? VideoProgressColors();
 
   @override

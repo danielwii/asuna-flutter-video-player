@@ -195,7 +195,7 @@ class _MyAppState extends State<MyApp> {
                         maxLength: 20,
                         onSubmitted: (text) {
                           print('onSendText $text');
-                          textEditingController.clear();
+                            textEditingController.text = '';
                         }))
                   : const SizedBox()),
             ),

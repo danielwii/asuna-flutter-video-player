@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
-import 'package:simple_gesture_detector/simple_gesture_detector.dart';
+import 'package:screen/screen.dart';
 
 import './asuna_video_player.dart';
 
@@ -25,10 +25,17 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   bool inactive;
   double videoRatio;
   bool isPortrait;
+  ValueNotifier<bool> showBrightnessOrVolumeNotifier;
 
   _VideoPlayPauseState() {
     listener = () {
-      if (isLayoutVisible && !inactive) setState(() {});
+      if (!inactive) {
+        if (!controller.value.isPlaying) {
+          showControls();
+        } else {
+          setState(() {});
+        }
+      }
     };
   }
 
@@ -36,11 +43,12 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 
   @override
   void initState() {
-    _logger.info('_VideoPlayPauseState.initState ...');
-    inactive = false;
+    _logger.info('VideoPlayPause.initState ...');
     super.initState();
+    inactive = false;
     controller.addListener(listener);
     isLayoutVisible = !controller.value.isPlaying;
+    showBrightnessOrVolumeNotifier = ValueNotifier(isLayoutVisible);
 
 //    final Size size = controller.value.size;
 //    videoRatio = size != null ? size.width / size.height : 1;
@@ -50,7 +58,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 
   @override
   void deactivate() {
-    _logger.info('_VideoPlayPauseState.deactivate ... pause');
+    _logger.info('VideoPlayPause.deactivate ... pause');
     inactive = true;
     if (controller.isDisposed) {
       return;
@@ -61,7 +69,11 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     super.deactivate();
   }
 
-  final TextStyle _textStyle = const TextStyle(color: Colors.white, fontSize: 12);
+  @override
+  void dispose() {
+    showBrightnessOrVolumeNotifier.dispose();
+    super.dispose();
+  }
 
   void play() {
     controller.play();
@@ -78,67 +90,92 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     controller.pause();
   }
 
+  void showControls() {
+    _logger.info('showControls ...');
+    setState(() {
+      isLayoutVisible = true;
+      showBrightnessOrVolumeNotifier.value = isLayoutVisible;
+    });
+  }
+
+  void hideControls() {
+    _logger.info('hideControls ...');
+    setState(() {
+      isLayoutVisible = false;
+      showBrightnessOrVolumeNotifier.value = isLayoutVisible;
+    });
+  }
+
+  final TextStyle _textStyle = const TextStyle(color: Colors.white, fontSize: 12);
+
   Widget _buildGesture() {
-    return SimpleGestureDetector(
-      onVerticalSwipe: (SwipeDirection direction) {
-        _logger.info('onVerticalSwipe: $direction');
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      child: Container(
+          constraints: BoxConstraints.expand(),
+          child: Align(
+              alignment: Alignment.center,
+              child: AspectRatio(
+                  aspectRatio: controller.value.aspectRatio, child: AsunaVideoPlayer(controller)))),
+      onDoubleTap: () {
+        _logger.info('VideoPlayPause.onDoubleTap ...');
+        if (controller.value.isPlaying) {
+          controller.pause();
+          showControls();
+        } else {
+          controller.play();
+          hideControls();
+        }
       },
-      onHorizontalSwipe: (SwipeDirection direction) {
-        _logger.info('onHorizontalSwipe: $direction');
-      },
-      swipeConfig: SimpleSwipeConfig(
-          verticalThreshold: 40.0,
-          horizontalThreshold: 40.0,
-          swipeDetectionBehavior: SwipeDetectionBehavior.continuousDistinct),
-      child: GestureDetector(
-        child: Container(
-            constraints: BoxConstraints.expand(),
-            child: Align(
-                alignment: Alignment.center,
-                child: AspectRatio(
-                    aspectRatio: controller.value.aspectRatio,
-                    child: AsunaVideoPlayer(controller)))),
-        onDoubleTap: () {
-          _logger.info('onDoubleTap ...');
-          if (!isPortrait) {
-            controller.value.isPlaying ? controller.pause() : controller.play();
-          }
-        },
-        onTap: () {
-          _logger.info('onTap ...');
+      onTap: () {
+        _logger.info('VideoPlayPause.onTap ...');
+        if (!isLayoutVisible) {
+          showControls();
+          Timer.periodic(new Duration(seconds: 5), (timer) {
+            _logger.info(
+                'VideoPlayPause.onTap check status ... playing: ${controller.value.isPlaying} isDisposed: ${controller.isDisposed}');
+            if (controller.value.isPlaying) {
+              if (mounted && !controller.isDisposed) hideControls();
+            }
+            timer.cancel();
+          });
+        } else {
           if (controller.value.isPlaying) {
-            setState(() => isLayoutVisible = true);
-            Timer.periodic(new Duration(seconds: 3), (timer) {
-              _logger.info('check status ... playing: ${controller.value.isPlaying}');
-              if (controller.value.isPlaying) {
-                if (mounted) setState(() => isLayoutVisible = false);
-              }
-              timer.cancel();
-            });
-          } else {
-            setState(() => isLayoutVisible = true);
+            hideControls();
           }
-        },
-      ),
+        }
+      },
     );
   }
 
   Widget _buildPlayPauseIndicator() {
 //    _logger.info('_buildPlayPauseIndicator: playing status: ${controller.value.isPlaying}');
     return Center(
-        child: InkWell(
+        child: IgnorePointer(
+      child: AnimatedOpacity(
+          opacity: controller.value.isPlaying ? 0.0 : 1.0,
+          duration: const Duration(milliseconds: 300),
+          child: const Icon(Icons.pause, size: 100.0, color: Colors.white54)),
+    )
+        /*InkWell(
             onTap: () => setState(() => controller.value.isPlaying ? pause() : play()),
             child: AnimatedOpacity(
                 opacity: controller.value.isPlaying ? 0.0 : 1.0,
                 duration: const Duration(milliseconds: 300),
-                child: const Icon(Icons.pause, size: 100.0, color: Colors.white54))));
+                child: const Icon(Icons.pause, size: 100.0, color: Colors.white54)))*/
+        );
   }
 
   List<Widget> _buildPortraitLayout() {
     final position = controller.value.position;
     final duration = controller.value.duration;
     return [
+      // top
+      // TODO top right function widgets
       Align(alignment: Alignment.topRight, child: SizedBox(height: 24, child: Row())),
+      // middle
+      _buildPlayPauseIndicator(),
+      // bottom
       Align(
           alignment: Alignment.bottomCenter,
           child: Container(
@@ -197,12 +234,15 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                                   child: const Icon(Icons.fullscreen, color: Colors.white),
                                 )))),
                   ])))),
-      _buildPlayPauseIndicator(),
     ];
   }
 
   List<Widget> _buildLandscapeLayout() {
     return [
+      // top
+      // middle
+      _buildPlayPauseIndicator(),
+      // bottom
       Align(
           alignment: Alignment.bottomCenter,
           child: Row(children: <Widget>[
@@ -210,8 +250,8 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
             SizedBox(
                 width: 40,
                 child: controller.value.isPlaying
-                    ? const Icon(Icons.play_arrow, color: Colors.white70)
-                    : const Icon(Icons.pause, color: Colors.white70)),
+                    ? const Icon(Icons.pause, color: Colors.white70)
+                    : const Icon(Icons.play_arrow, color: Colors.white70)),
             // progress indicator
             Expanded(child: VideoProgressIndicator(controller, allowScrubbing: true)),
             // fullscreen button
@@ -225,7 +265,6 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                     },
                     child: const Icon(Icons.fullscreen, color: Colors.white70))),
           ])),
-      _buildPlayPauseIndicator(),
     ];
   }
 
@@ -236,13 +275,222 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
       fit: StackFit.passthrough,
       children: [
         _buildGesture(),
-      ]
-        ..add(controller.value.isBuffering
+        _VideoControlScrubber(
+            controller: controller, indicatorShower: showBrightnessOrVolumeNotifier),
+        controller.value.isBuffering
             ? const Center(child: const CircularProgressIndicator())
-            : const SizedBox())
-        ..addAll(isLayoutVisible
-            ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
-            : [const SizedBox()]),
+            : const SizedBox(),
+      ]..addAll(isLayoutVisible
+          ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
+          : [const SizedBox()]),
+    );
+  }
+}
+
+class _VideoControlScrubber extends StatefulWidget {
+  final Widget child;
+  final AsunaVideoPlayerController controller;
+  final ValueNotifier<bool> indicatorShower;
+
+  _VideoControlScrubber({this.child, @required this.controller, this.indicatorShower});
+
+  @override
+  State<StatefulWidget> createState() => _VideoControlScrubberState();
+}
+
+class _VideoControlScrubberState extends State<_VideoControlScrubber> {
+  bool _controllerWasPlaying = false;
+  Offset startPosition;
+  Duration currentDuration;
+  double currentVolume;
+  double updateToVolume;
+  double currentBrightness;
+  double updateToBrightness;
+  bool isInBrightnessArea;
+  bool isInVolumeArea;
+
+  AsunaVideoPlayerController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    Screen.brightness.then((brightness) {
+      currentBrightness = brightness;
+      updateToBrightness = brightness;
+    });
+    currentVolume = controller.value.volume;
+    updateToVolume = currentVolume;
+  }
+
+  void seekToRelativePosition(Offset globalPosition) {
+    if (startPosition == null) {
+      return;
+    }
+
+    final RenderBox box = context.findRenderObject();
+    final Offset tapPos = box.globalToLocal(globalPosition);
+    final double relative = (tapPos.dx - startPosition.dx) / (box.size.width / 2);
+    final Duration position = currentDuration + controller.value.duration * relative;
+    final Duration fixedPosition = position < const Duration()
+        ? const Duration()
+        : position > controller.value.duration ? controller.value.duration * .99 : position;
+
+    _logger.info(
+        'position: $tapPos relative: $relative duration: ${controller.value.duration} current: ${controller.value.position} position: $position fixedPosition: $fixedPosition'
+        'calc (dx:${tapPos.dx} - start:${startPosition.dx}) / ${box.size.width / 2} fix: ${controller.value.duration * relative}');
+    controller.seekTo(fixedPosition);
+  }
+
+  void updateBrightnessOrVolume(Offset globalPosition) async {
+    if (startPosition == null) {
+      return;
+    }
+
+    final RenderBox box = context.findRenderObject();
+    final Offset tapPos = box.globalToLocal(globalPosition);
+    final double relative = -(tapPos.dy - startPosition.dy) / (box.size.height * .8);
+
+    _logger.finest('update $relative');
+
+    if (isInVolumeArea) {
+      var updateTo = currentVolume + relative;
+      updateTo = updateTo > 1 ? 1 : updateTo < 0 ? 0 : updateTo;
+      _logger.finest('update volume $currentVolume -> updateTo: $updateTo');
+      setState(() {
+        updateToVolume = updateTo;
+      });
+      controller.setVolume(updateTo);
+    }
+    if (isInBrightnessArea) {
+      var updateTo = currentBrightness + relative;
+      updateTo = updateTo > 1 ? 1 : updateTo < 0 ? .1 : updateTo;
+      _logger.finest('update brightness $currentBrightness -> updateTo: $updateTo');
+      setState(() {
+        updateToBrightness = updateTo;
+      });
+      Screen.setBrightness(updateTo);
+    }
+  }
+
+  void updateStartPosition(Offset globalPosition) async {
+    final RenderBox box = context.findRenderObject();
+    final Offset tapPos = box.globalToLocal(globalPosition);
+    startPosition = tapPos;
+    currentDuration = controller.value.position;
+    currentVolume = controller.value.volume;
+    currentBrightness = await Screen.brightness;
+
+    final functionArea = box.size.width / 3;
+    isInBrightnessArea = tapPos.dx < functionArea;
+    isInVolumeArea = tapPos.dx > box.size.width - functionArea;
+
+    _logger.finest(
+        'update start position: $tapPos direction: ${tapPos.direction} currentDuration: $currentDuration '
+        'isInBrightnessArea: $isInBrightnessArea, isInVolumeArea: $isInVolumeArea');
+  }
+
+  void cleanPosition() {
+    startPosition = null;
+    currentDuration = null;
+//    currentVolume = null;
+//    currentBrightness = null;
+    isInBrightnessArea = false;
+    isInVolumeArea = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      child: Stack(children: <Widget>[
+//        widget.child,
+        // brightness
+        Positioned(
+            left: 10,
+            top: 10,
+            child: Offstage(
+                offstage: widget.indicatorShower.value == false,
+                child: RotatedBox(
+                    quarterTurns: -1,
+                    child: Container(
+                        width: 100,
+                        child: LinearProgressIndicator(
+                            valueColor: const AlwaysStoppedAnimation(Colors.pink),
+                            backgroundColor: Colors.white30,
+                            value: updateToBrightness))))),
+        // volume
+        Positioned(
+            right: 10,
+            top: 10,
+            child: Offstage(
+                offstage: widget.indicatorShower.value == false,
+                child: RotatedBox(
+                    quarterTurns: -1,
+                    child: Container(
+                        width: 100,
+                        child: LinearProgressIndicator(
+                            valueColor: const AlwaysStoppedAnimation(Colors.pink),
+                            backgroundColor: Colors.white30,
+                            value: updateToVolume))))),
+      ]),
+
+      // --------------------------------------------------------------
+      // adjust video position
+      // --------------------------------------------------------------
+
+      onHorizontalDragStart: (DragStartDetails details) {
+        if (!controller.value.initialized) {
+          return;
+        }
+        _logger.finest('onHorizontalDragStart $details');
+        updateStartPosition(details.globalPosition);
+        _controllerWasPlaying = controller.value.isPlaying;
+        if (_controllerWasPlaying) {
+          controller.pause();
+        }
+      },
+      onHorizontalDragUpdate: (DragUpdateDetails details) {
+        if (!controller.value.initialized) {
+          return;
+        }
+        seekToRelativePosition(details.globalPosition);
+      },
+      onHorizontalDragEnd: (DragEndDetails details) {
+        if (!controller.value.initialized) {
+          return;
+        }
+        _logger.finest('onHorizontalDragEnd $details');
+        cleanPosition();
+        if (_controllerWasPlaying) {
+          controller.play();
+        }
+      },
+
+      // --------------------------------------------------------------
+      // adjust volume or bright
+      // --------------------------------------------------------------
+
+      onVerticalDragStart: (DragStartDetails details) {
+        if (!controller.value.initialized) {
+          return;
+        }
+        _logger.finest('onVerticalDragStart $details');
+        updateStartPosition(details.globalPosition);
+      },
+      onVerticalDragUpdate: (DragUpdateDetails details) {
+        if (!controller.value.initialized) {
+          return;
+        }
+        _logger.finest('onVerticalDragUpdate $details');
+        updateBrightnessOrVolume(details.globalPosition);
+      },
+      onVerticalDragEnd: (DragEndDetails details) {
+        if (!controller.value.initialized) {
+          return;
+        }
+        _logger.finest('onVerticalDragEnd $details');
+        cleanPosition();
+      },
     );
   }
 }
