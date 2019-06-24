@@ -352,7 +352,7 @@ class _VideoControlScrubberState extends State<_VideoControlScrubber> {
 
     _logger.finest('update $relative');
 
-    if (isInVolumeArea) {
+    if (isInVolumeArea == true) {
       var updateTo = currentVolume + relative;
       updateTo = updateTo > 1 ? 1 : updateTo < 0 ? 0 : updateTo;
       _logger.finest('update volume $currentVolume -> updateTo: $updateTo');
@@ -361,7 +361,7 @@ class _VideoControlScrubberState extends State<_VideoControlScrubber> {
       });
       controller.setVolume(updateTo);
     }
-    if (isInBrightnessArea) {
+    if (isInBrightnessArea == true) {
       var updateTo = currentBrightness + relative;
       updateTo = updateTo > 1 ? 1 : updateTo < 0 ? .1 : updateTo;
       _logger.finest('update brightness $currentBrightness -> updateTo: $updateTo');

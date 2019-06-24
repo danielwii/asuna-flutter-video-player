@@ -26,6 +26,7 @@ class _MyAppState extends State<MyApp> {
   AsunaVideoPlayerController playerController;
   ValueNotifier<BarrageValue> timelineNotifier;
   Random random = new Random();
+  bool enableBarrage = true;
 
   TextEditingController textEditingController;
 
@@ -98,19 +99,21 @@ class _MyAppState extends State<MyApp> {
     ];*/
 
     List<Bullet> bullets = <Bullet>[
-      const Bullet(child: Text('2423423'), showTime: 1200),
-      const Bullet(child: Text('1123123'), showTime: 4200),
-      const Bullet(child: Text('35345345'), showTime: 10200),
-      const Bullet(child: Text('4gsgse'), showTime: 9200),
-      const Bullet(child: Text('5nghnfh'), showTime: 5200),
-      const Bullet(child: Text('6^_^'), showTime: 7200),
-//      const Bullet(child: Text('16^_^'), showTime: 60720),
-//      const Bullet(child: Text('26^_^'), showTime: 70720),
-//      const Bullet(child: Text('36^_^'), showTime: 65720),
-    ]..addAll(List<Bullet>.generate(1000, (i) {
-        final showTime = random.nextInt(60000);
+      const Bullet(child: IgnorePointer(child: Text('2423423')), showTime: 1200),
+      const Bullet(child: IgnorePointer(child: Text('1123123')), showTime: 4200),
+      const Bullet(child: IgnorePointer(child: Text('35345345')), showTime: 10200),
+      const Bullet(child: IgnorePointer(child: Text('4gsgse')), showTime: 9200),
+      const Bullet(child: IgnorePointer(child: Text('5nghnfh')), showTime: 5200),
+      const Bullet(child: IgnorePointer(child: Text('6^_^')), showTime: 7200),
+      const Bullet(child: IgnorePointer(child: Text('16^_^')), showTime: 60720),
+      const Bullet(child: IgnorePointer(child: Text('26^_^')), showTime: 70720),
+      const Bullet(child: IgnorePointer(child: Text('36^_^')), showTime: 65720),
+    ]..addAll(List<Bullet>.generate(60 * 60 * 20, (i) {
+        final showTime = random.nextInt(60 * 60 * 1000);
         return Bullet(
-            child: Text('$i-$showTime', style: TextStyle(color: Colors.white)), showTime: showTime);
+            child:
+                IgnorePointer(child: Text('$i-$showTime', style: TextStyle(color: Colors.white))),
+            showTime: showTime);
       }).toList(growable: false));
 
     return MaterialApp(
@@ -166,6 +169,7 @@ class _MyAppState extends State<MyApp> {
                       timelineNotifier: timelineNotifier,
                       bullets: bullets,
                         safeBottomHeight: 40,
+                        speedCorrectionInMilliseconds: 5000,
                       child: NetworkPlayerLifeCycle(
 //                        'http://www.sample-videos.com/video123/mp4/720/big_buck_bunny_720p_20mb.mp4',
                         'http://10.0.2.2:8000/big_buck_bunny_720p_20mb.mp4',
@@ -190,13 +194,24 @@ class _MyAppState extends State<MyApp> {
               ]..add(MediaQuery.of(context).orientation == Orientation.portrait
                   ? Padding(
                     padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: <Widget>[
+                          Flexible(
                     child: TextField(
                         controller: textEditingController,
                         maxLength: 20,
                         onSubmitted: (text) {
                           print('onSendText $text');
                             textEditingController.text = '';
-                        }))
+                                }),
+                          ),
+                          Switch(
+                              value: enableBarrage,
+                              onChanged: (updateTo) {
+                                print('onChanged to $updateTo');
+                              }),
+                        ],
+                      ))
                   : const SizedBox()),
             ),
           ),
