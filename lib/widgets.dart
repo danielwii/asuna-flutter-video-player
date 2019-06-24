@@ -25,7 +25,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   bool inactive;
   double videoRatio;
   bool isPortrait;
-  ValueNotifier<bool> showBrightnessOrVolumeNotifier;
+//  ValueNotifier<List<bool>> showBrightnessOrVolumeNotifier;
 
   _VideoPlayPauseState() {
     listener = () {
@@ -48,7 +48,9 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     inactive = false;
     controller.addListener(listener);
     isLayoutVisible = !controller.value.isPlaying;
-    showBrightnessOrVolumeNotifier = ValueNotifier(isLayoutVisible);
+
+    // first control brightness, second control volume
+//    showBrightnessOrVolumeNotifier = ValueNotifier([false, false]);
 
 //    final Size size = controller.value.size;
 //    videoRatio = size != null ? size.width / size.height : 1;
@@ -71,7 +73,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 
   @override
   void dispose() {
-    showBrightnessOrVolumeNotifier.dispose();
+//    showBrightnessOrVolumeNotifier.dispose();
     super.dispose();
   }
 
@@ -94,7 +96,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     _logger.info('showControls ...');
     setState(() {
       isLayoutVisible = true;
-      showBrightnessOrVolumeNotifier.value = isLayoutVisible;
+//      showBrightnessOrVolumeNotifier.value = isLayoutVisible;
     });
   }
 
@@ -102,7 +104,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
     _logger.info('hideControls ...');
     setState(() {
       isLayoutVisible = false;
-      showBrightnessOrVolumeNotifier.value = isLayoutVisible;
+//      showBrightnessOrVolumeNotifier.value = isLayoutVisible;
     });
   }
 
@@ -275,8 +277,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
       fit: StackFit.passthrough,
       children: [
         _buildGesture(),
-        _VideoControlScrubber(
-            controller: controller, indicatorShower: showBrightnessOrVolumeNotifier),
+        _VideoControlScrubber(controller: controller),
         controller.value.isBuffering
             ? const Center(child: const CircularProgressIndicator())
             : const SizedBox(),
@@ -287,39 +288,126 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   }
 }
 
+class _VideoIndicatorValue {
+  bool showProgressIndicator;
+  bool showBrightness;
+  bool showVolume;
+  Duration currentDuration;
+  double currentBrightness;
+  double currentVolume;
+  DateTime lastProgressOperationAt;
+  DateTime lastBrightnessOrVolumeOperationAt;
+
+  _VideoIndicatorValue({
+    this.showProgressIndicator = false,
+    this.showBrightness = false,
+    this.showVolume = false,
+    this.currentDuration = const Duration(),
+    this.currentBrightness = .0,
+    this.currentVolume = .0,
+    this.lastProgressOperationAt,
+    this.lastBrightnessOrVolumeOperationAt,
+  });
+
+  _VideoIndicatorValue copyWith({
+    bool showProgressIndicator,
+    bool showBrightness,
+    bool showVolume,
+    Duration currentDuration,
+    double currentBrightness,
+    double currentVolume,
+    DateTime lastProgressOperationAt,
+    DateTime lastBrightnessOrVolumeOperationAt,
+  }) =>
+      _VideoIndicatorValue(
+        showProgressIndicator: showProgressIndicator ?? this.showProgressIndicator,
+        showBrightness: showBrightness ?? this.showBrightness,
+        showVolume: showVolume ?? this.showVolume,
+        currentDuration: currentDuration ?? this.currentDuration,
+        currentBrightness: currentBrightness ?? this.currentBrightness,
+        currentVolume: currentVolume ?? this.currentVolume,
+        lastProgressOperationAt: lastProgressOperationAt ?? this.lastProgressOperationAt,
+        lastBrightnessOrVolumeOperationAt:
+            lastBrightnessOrVolumeOperationAt ?? this.lastBrightnessOrVolumeOperationAt,
+      );
+}
+
+class _VideoIndicatorController extends ValueNotifier<_VideoIndicatorValue> {
+  Timer _cleaner;
+
+  _VideoIndicatorController(_VideoIndicatorValue value) : super(value);
+
+  void initialize() {
+    _cleaner = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final hasValue = (value.showBrightness || value.showVolume);
+      final hasOperation = value.lastBrightnessOrVolumeOperationAt != null;
+      if (hasValue && hasOperation) {
+        final now = DateTime.now();
+        if (now.difference(value.lastBrightnessOrVolumeOperationAt).inSeconds >= 3) {
+          value = value.copyWith(
+            showBrightness: false,
+            showVolume: false,
+            lastBrightnessOrVolumeOperationAt: now,
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  Future<void> dispose() async {
+    _cleaner.cancel();
+    super.dispose();
+  }
+}
+
 class _VideoControlScrubber extends StatefulWidget {
   final Widget child;
   final AsunaVideoPlayerController controller;
-  final ValueNotifier<bool> indicatorShower;
 
-  _VideoControlScrubber({this.child, @required this.controller, this.indicatorShower});
+  _VideoControlScrubber({this.child, @required this.controller});
 
   @override
   State<StatefulWidget> createState() => _VideoControlScrubberState();
 }
 
 class _VideoControlScrubberState extends State<_VideoControlScrubber> {
+  _VideoIndicatorController indicatorController;
   bool _controllerWasPlaying = false;
   Offset startPosition;
-  Duration currentDuration;
-  double currentVolume;
+//  Duration currentDuration;
+//  double currentVolume;
   double updateToVolume;
-  double currentBrightness;
+//  double currentBrightness;
   double updateToBrightness;
   bool isInBrightnessArea;
   bool isInVolumeArea;
+
+  static const BrightnessIndicatorIndex = 0;
+  static const VolumeIndicatorIndex = 1;
 
   AsunaVideoPlayerController get controller => widget.controller;
 
   @override
   void initState() {
     super.initState();
-    Screen.brightness.then((brightness) {
-      currentBrightness = brightness;
+    Future.sync(() async {
+      final brightness = await Screen.brightness;
+      indicatorController = _VideoIndicatorController(_VideoIndicatorValue(
+        currentBrightness: brightness,
+        currentVolume: controller.value.volume,
+        currentDuration: controller.value.position,
+      ))
+        ..initialize();
       updateToBrightness = brightness;
+      updateToVolume = controller.value.volume;
     });
-    currentVolume = controller.value.volume;
-    updateToVolume = currentVolume;
+  }
+
+  @override
+  void dispose() {
+    indicatorController.dispose();
+    super.dispose();
   }
 
   void seekToRelativePosition(Offset globalPosition) {
@@ -330,7 +418,8 @@ class _VideoControlScrubberState extends State<_VideoControlScrubber> {
     final RenderBox box = context.findRenderObject();
     final Offset tapPos = box.globalToLocal(globalPosition);
     final double relative = (tapPos.dx - startPosition.dx) / (box.size.width / 2);
-    final Duration position = currentDuration + controller.value.duration * relative;
+    final Duration position =
+        indicatorController.value.currentDuration + controller.value.duration * relative;
     final Duration fixedPosition = position < const Duration()
         ? const Duration()
         : position > controller.value.duration ? controller.value.duration * .99 : position;
@@ -353,20 +442,33 @@ class _VideoControlScrubberState extends State<_VideoControlScrubber> {
     _logger.finest('update $relative');
 
     if (isInVolumeArea == true) {
-      var updateTo = currentVolume + relative;
+      var updateTo = indicatorController.value.currentVolume + relative;
       updateTo = updateTo > 1 ? 1 : updateTo < 0 ? 0 : updateTo;
-      _logger.finest('update volume $currentVolume -> updateTo: $updateTo');
+      _logger.finest(
+          'update volume ${indicatorController.value.currentVolume} -> updateTo: $updateTo');
       setState(() {
         updateToVolume = updateTo;
+//        widget.indicatorShower.value = [true, false];
+        indicatorController.value = indicatorController.value.copyWith(
+          showBrightness: false,
+          showVolume: true,
+          lastBrightnessOrVolumeOperationAt: DateTime.now(),
+        );
       });
       controller.setVolume(updateTo);
-    }
-    if (isInBrightnessArea == true) {
-      var updateTo = currentBrightness + relative;
+    } else if (isInBrightnessArea == true) {
+      var updateTo = indicatorController.value.currentBrightness + relative;
       updateTo = updateTo > 1 ? 1 : updateTo < 0 ? .1 : updateTo;
-      _logger.finest('update brightness $currentBrightness -> updateTo: $updateTo');
+      _logger.finest(
+          'update brightness ${indicatorController.value.currentBrightness} -> updateTo: $updateTo');
       setState(() {
         updateToBrightness = updateTo;
+//        widget.indicatorShower.value = [false, true];
+        indicatorController.value = indicatorController.value.copyWith(
+          showBrightness: true,
+          showVolume: false,
+          lastBrightnessOrVolumeOperationAt: DateTime.now(),
+        );
       });
       Screen.setBrightness(updateTo);
     }
@@ -376,58 +478,75 @@ class _VideoControlScrubberState extends State<_VideoControlScrubber> {
     final RenderBox box = context.findRenderObject();
     final Offset tapPos = box.globalToLocal(globalPosition);
     startPosition = tapPos;
-    currentDuration = controller.value.position;
-    currentVolume = controller.value.volume;
-    currentBrightness = await Screen.brightness;
 
     final functionArea = box.size.width / 3;
     isInBrightnessArea = tapPos.dx < functionArea;
     isInVolumeArea = tapPos.dx > box.size.width - functionArea;
 
-    _logger.finest(
-        'update start position: $tapPos direction: ${tapPos.direction} currentDuration: $currentDuration '
+    indicatorController.value = indicatorController.value.copyWith(
+      currentDuration: controller.value.position,
+      currentBrightness: await Screen.brightness,
+      currentVolume: controller.value.volume,
+//      showBrightness: isInBrightnessArea,
+//      showVolume: isInVolumeArea,
+//      lastBrightnessOrVolumeOperationAt: DateTime.now(),
+    );
+//    currentDuration = controller.value.position;
+//    currentVolume = controller.value.volume;
+//    currentBrightness = await Screen.brightness;
+
+    _logger.finest('update start position: $tapPos direction: ${tapPos.direction} '
         'isInBrightnessArea: $isInBrightnessArea, isInVolumeArea: $isInVolumeArea');
   }
 
-  void cleanPosition() {
+  void endOperation() async {
     startPosition = null;
-    currentDuration = null;
+//    currentDuration = null;
 //    currentVolume = null;
 //    currentBrightness = null;
     isInBrightnessArea = false;
     isInVolumeArea = false;
+    indicatorController.value = indicatorController.value.copyWith(
+      currentDuration: controller.value.position,
+      currentBrightness: await Screen.brightness,
+      currentVolume: controller.value.volume,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (indicatorController == null) {
+      return const SizedBox();
+    }
+
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       child: Stack(children: <Widget>[
 //        widget.child,
         // brightness
         Positioned(
-            left: 10,
-            top: 10,
+            left: 40,
+            top: 30,
             child: Offstage(
-                offstage: widget.indicatorShower.value == false,
+                offstage: indicatorController.value.showBrightness == false,
                 child: RotatedBox(
                     quarterTurns: -1,
                     child: Container(
-                        width: 100,
+                        width: 160,
                         child: LinearProgressIndicator(
                             valueColor: const AlwaysStoppedAnimation(Colors.pink),
                             backgroundColor: Colors.white30,
                             value: updateToBrightness))))),
         // volume
         Positioned(
-            right: 10,
-            top: 10,
+            right: 40,
+            top: 30,
             child: Offstage(
-                offstage: widget.indicatorShower.value == false,
+                offstage: indicatorController.value.showVolume == false,
                 child: RotatedBox(
                     quarterTurns: -1,
                     child: Container(
-                        width: 100,
+                        width: 160,
                         child: LinearProgressIndicator(
                             valueColor: const AlwaysStoppedAnimation(Colors.pink),
                             backgroundColor: Colors.white30,
@@ -460,7 +579,7 @@ class _VideoControlScrubberState extends State<_VideoControlScrubber> {
           return;
         }
         _logger.finest('onHorizontalDragEnd $details');
-        cleanPosition();
+        endOperation();
         if (_controllerWasPlaying) {
           controller.play();
         }
@@ -489,7 +608,7 @@ class _VideoControlScrubberState extends State<_VideoControlScrubber> {
           return;
         }
         _logger.finest('onVerticalDragEnd $details');
-        cleanPosition();
+        endOperation();
       },
     );
   }
