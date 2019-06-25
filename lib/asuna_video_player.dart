@@ -254,8 +254,10 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
     if (_creatingCompleter != null) {
       await _creatingCompleter.future;
       if (!_isDisposed) {
+        _isDisposed = true;
         _timer?.cancel();
         await _eventSubscription?.cancel();
+        _logger.info('AsunaVideoPlayerController($textureId).dispose');
         await _channel.invokeMethod<void>(
           'dispose',
           <String, dynamic>{'textureId': _textureId},
@@ -263,7 +265,6 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
       }
       _lifeCycleObserver.dispose();
     }
-    _isDisposed = true;
     super.dispose();
   }
 

@@ -43,7 +43,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 
   @override
   void initState() {
-    _logger.info('VideoPlayPause.initState ...');
+    _logger.info('VideoPlayPause(${controller.textureId}).initState ...');
     super.initState();
     inactive = false;
     controller.addListener(listener);
@@ -60,7 +60,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 
   @override
   void deactivate() {
-    _logger.info('VideoPlayPause.deactivate ... pause');
+    _logger.info('VideoPlayPause(${controller.textureId}).deactivate ...');
     inactive = true;
     if (controller.isDisposed) {
       return;
@@ -73,6 +73,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 
   @override
   void dispose() {
+    _logger.info('VideoPlayPause(${controller.textureId}).dispose ...');
 //    showBrightnessOrVolumeNotifier.dispose();
     super.dispose();
   }
@@ -144,6 +145,8 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
         } else {
           if (controller.value.isPlaying) {
             hideControls();
+          } else {
+            controller.play();
           }
         }
       },
@@ -711,14 +714,14 @@ abstract class _PlayerLifeCycleState extends State<PlayerLifeCycle> {
 
   @override
   void deactivate() {
-    _logger.info('_PlayerLifeCycleState.deactive');
+    _logger.info('_PlayerLifeCycleState(${controller.textureId}).deactive');
     controller.deactivate();
     super.deactivate();
   }
 
   @override
   void dispose() {
-    _logger.info('_PlayerLifeCycleState.dispose');
+    _logger.info('_PlayerLifeCycleState(${controller.textureId}).dispose');
     controller.dispose();
     super.dispose();
   }
@@ -778,13 +781,15 @@ class AspectRatioVideoState extends State<AspectRatioVideo> {
   @override
   Widget build(BuildContext context) {
     _logger.info(
-        'AspectRatioVideoState.build initialized($initialized) ${MediaQuery.of(context).orientation}');
+        'AspectRatioVideoState.build initialized(${controller.value.initialized}) ${MediaQuery.of(context).orientation}');
 
     return Container(
         color: Colors.black,
         child: Align(
             alignment: Alignment.center,
-            child: initialized ? VideoPlayPause(controller) : const CircularProgressIndicator()));
+            child: controller.value.initialized
+                ? VideoPlayPause(controller)
+                : const CircularProgressIndicator()));
   }
 }
 
