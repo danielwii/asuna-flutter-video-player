@@ -62,9 +62,6 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   void deactivate() {
     _logger.info('VideoPlayPause(${controller.textureId}).deactivate ...');
     inactive = true;
-    if (controller.isDisposed) {
-      return;
-    }
     controller.pause();
 //    controller.setVolume(0.0);
     controller.removeListener(listener);
@@ -157,18 +154,10 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
 //    _logger.info('_buildPlayPauseIndicator: playing status: ${controller.value.isPlaying}');
     return Center(
         child: IgnorePointer(
-      child: AnimatedOpacity(
-          opacity: controller.value.isPlaying ? 0.0 : 1.0,
-          duration: const Duration(milliseconds: 300),
-          child: const Icon(Icons.pause, size: 100.0, color: Colors.white54)),
-    )
-        /*InkWell(
-            onTap: () => setState(() => controller.value.isPlaying ? pause() : play()),
             child: AnimatedOpacity(
                 opacity: controller.value.isPlaying ? 0.0 : 1.0,
                 duration: const Duration(milliseconds: 300),
-                child: const Icon(Icons.pause, size: 100.0, color: Colors.white54)))*/
-        );
+                child: const Icon(Icons.pause, size: 100.0, color: Colors.white54))));
   }
 
   List<Widget> _buildPortraitLayout() {
@@ -190,12 +179,10 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                   child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
                     // play/pause button
                     SizedBox(
-                        width: 40,
+                        width: 48,
                         child: MaterialButton(
-                            onPressed: () {
-                              controller.value.isPlaying ? pause() : play();
-                            },
-                            padding: EdgeInsets.all(0),
+                            onPressed: () => controller.value.isPlaying ? pause() : play(),
+                            padding: EdgeInsets.all(4),
                             child: controller.value.isPlaying
                                 ? const Icon(Icons.pause, color: Colors.white70)
                                 : const Icon(Icons.play_arrow, color: Colors.white70))),
@@ -210,7 +197,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                         )),
                     // fullscreen button
                     SizedBox(
-                        width: 30,
+                        width: 48,
                         child: SizedBox.expand(
                             child: WillPopScope(
                                 onWillPop: () {
@@ -225,7 +212,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                                   return Future.value(true);
                                 },
                                 child: MaterialButton(
-                                  padding: EdgeInsets.all(0),
+                                  padding: EdgeInsets.all(4),
                                   onPressed: () {
                                     Navigator.push(context, MaterialPageRoute(builder: (_) {
                                       SystemChrome.setPreferredOrientations([
@@ -253,21 +240,25 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
           child: Row(children: <Widget>[
             // play/pause button
             SizedBox(
-                width: 40,
-                child: controller.value.isPlaying
-                    ? const Icon(Icons.pause, color: Colors.white70)
-                    : const Icon(Icons.play_arrow, color: Colors.white70)),
+                width: 48,
+                child: MaterialButton(
+                    onPressed: () => controller.value.isPlaying ? pause() : play(),
+                    padding: EdgeInsets.all(4),
+                    child: controller.value.isPlaying
+                        ? const Icon(Icons.pause, color: Colors.white70)
+                        : const Icon(Icons.play_arrow, color: Colors.white70))),
             // progress indicator
             Expanded(child: VideoProgressIndicator(controller, allowScrubbing: true)),
             // fullscreen button
             SizedBox(
-                width: 40,
-                child: FlatButton(
+                width: 48,
+                child: MaterialButton(
                     onPressed: () {
                       SystemChrome.setPreferredOrientations(
                           [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
                       Navigator.pop(context);
                     },
+                    padding: EdgeInsets.all(4),
                     child: const Icon(Icons.fullscreen, color: Colors.white70))),
           ])),
     ];
@@ -728,7 +719,8 @@ abstract class _PlayerLifeCycleState extends State<PlayerLifeCycle> {
 
   @override
   Widget build(BuildContext context) {
-    _logger.info('build widget is $widget childBuilder: ${widget.childBuilder != null}');
+    _logger.info(
+        '_PlayerLifeCycleState(${controller.textureId}).build widget is $widget childBuilder: ${widget.childBuilder != null}');
     return widget.childBuilder(context, controller);
   }
 
@@ -749,9 +741,8 @@ class _AssetPlayerLifeCycleState extends _PlayerLifeCycleState {
 
 class AspectRatioVideo extends StatefulWidget {
   final AsunaVideoPlayerController controller;
-  final bool autoPlay;
 
-  AspectRatioVideo(this.controller, {this.autoPlay = true});
+  AspectRatioVideo(this.controller);
 
   @override
   State<StatefulWidget> createState() => AspectRatioVideoState();
@@ -800,7 +791,7 @@ class _FullscreenPlayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    _logger.info('_FullscreenPlayer build');
+    _logger.info('_FullscreenPlayer.build');
     return Scaffold(
         body: Hero(
             tag: "fullscreenPlayer",

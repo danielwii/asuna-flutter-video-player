@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:screen/screen.dart';
 import 'package:logging/logging.dart';
+import 'package:screen/screen.dart';
 
 export 'widgets.dart';
 
@@ -298,8 +298,8 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
   }
 
   Future<void> _applyPlayPause() async {
-    _logger
-        .info('AsunaVideoPlayerController._applyPlayPause value: $value, isDisposed: $_isDisposed');
+    _logger.info(
+        'AsunaVideoPlayerController($textureId)._applyPlayPause value: $value, isDisposed: $_isDisposed');
     if (!value.initialized || _isDisposed) {
       return;
     }
@@ -320,7 +320,8 @@ class AsunaVideoPlayerController extends ValueNotifier<_AsunaVideoPlayerValue> {
       });
     } else {
       _timer?.cancel();
-      _logger.info('call pause isDisposed: $_isDisposed $value');
+      _logger.info(
+          'AsunaVideoPlayerController($textureId)._applyPlayPause call pause isDisposed: $_isDisposed $value');
       await _channel.invokeMethod<void>('pause', <String, dynamic>{'textureId': _textureId});
     }
   }
