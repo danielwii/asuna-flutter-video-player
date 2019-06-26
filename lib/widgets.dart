@@ -267,17 +267,22 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   @override
   Widget build(BuildContext context) {
     isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
-    return Stack(
-      fit: StackFit.passthrough,
-      children: [
-        _buildGesture(),
-        _VideoControlScrubber(controller: controller),
-        controller.value.isBuffering
-            ? const Center(child: const CircularProgressIndicator())
-            : const SizedBox(),
-      ]..addAll(isLayoutVisible
-          ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
-          : [const SizedBox()]),
+    final rotate =
+        (!isPortrait && controller.value.size.width < controller.value.size.height) ? -1 : 0;
+    return RotatedBox(
+      quarterTurns: rotate,
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: [
+          _buildGesture(),
+          _VideoControlScrubber(controller: controller),
+          controller.value.isBuffering
+              ? const Center(child: const CircularProgressIndicator())
+              : const SizedBox(),
+        ]..addAll(isLayoutVisible
+            ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
+            : [const SizedBox()]),
+      ),
     );
   }
 }
