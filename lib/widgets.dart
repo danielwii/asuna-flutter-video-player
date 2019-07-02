@@ -201,6 +201,7 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                         child: SizedBox.expand(
                             child: WillPopScope(
                                 onWillPop: () {
+                                  _logger.info('willPop in portrait, back to portrait');
                                   // back to portrait when tap back
                                   if (MediaQuery.of(context).orientation == Orientation.landscape) {
                                     SystemChrome.setPreferredOrientations([
@@ -252,14 +253,26 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
             // fullscreen button
             SizedBox(
                 width: 48,
-                child: MaterialButton(
-                    onPressed: () {
+                child: WillPopScope(
+                  onWillPop: () {
+                    _logger.info('willPop in landscape, back to portrait');
+                    // back to portrait when tap back button when in fullscreen mode
+                    if (MediaQuery.of(context).orientation == Orientation.landscape) {
                       SystemChrome.setPreferredOrientations(
                           [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-                      Navigator.pop(context);
-                    },
-                    padding: EdgeInsets.all(4),
-                    child: const Icon(Icons.fullscreen, color: Colors.white70))),
+                      SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
+                    }
+                    return Future.value(true);
+                  },
+                  child: MaterialButton(
+                      onPressed: () {
+                        SystemChrome.setPreferredOrientations(
+                            [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                        Navigator.pop(context);
+                      },
+                      padding: EdgeInsets.all(4),
+                      child: const Icon(Icons.fullscreen, color: Colors.white70)),
+                )),
           ])),
     ];
   }
