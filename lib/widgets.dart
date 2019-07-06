@@ -221,33 +221,32 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                                   return Future.value(true);
                                 },
                                 child: MaterialButton(
-                                  padding: EdgeInsets.all(4),
-                                  onPressed: () {
-                                    _logger.info(
-                                        'isPortraitVideo: $isPortraitVideo, change fullscreen mode...');
+                                    padding: EdgeInsets.all(4),
+                                    onPressed: () {
+                                      _logger.info(
+                                          'isPortraitVideo: $isPortraitVideo, change fullscreen mode...');
 
-                                    if (isPortraitVideo && !widget.isFullscreenMode) {
-                                      return Navigator.push(context,
-                                          MaterialPageRoute(builder: (_) {
+                                      if (isPortraitVideo && !widget.isFullscreenMode) {
+                                        return Navigator.push(context,
+                                            MaterialPageRoute(builder: (_) {
+                                          return _FullscreenPlayer(controller: controller);
+                                        }));
+                                      }
+
+                                      if (widget.isFullscreenMode) {
+                                        return Navigator.pop(context);
+                                      }
+
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) {
+                                        SystemChrome.setPreferredOrientations([
+                                          DeviceOrientation.landscapeLeft,
+                                          DeviceOrientation.landscapeRight
+                                        ]);
+                                        SystemChrome.setEnabledSystemUIOverlays([]);
                                         return _FullscreenPlayer(controller: controller);
                                       }));
-                                    }
-
-                                    if (widget.isFullscreenMode) {
-                                      return Navigator.pop(context);
-                                    }
-
-                                    Navigator.push(context, MaterialPageRoute(builder: (_) {
-                                      SystemChrome.setPreferredOrientations([
-                                        DeviceOrientation.landscapeLeft,
-                                        DeviceOrientation.landscapeRight
-                                      ]);
-                                      SystemChrome.setEnabledSystemUIOverlays([]);
-                                      return _FullscreenPlayer(controller: controller);
-                                    }));
-                                  },
-                                  child: const Icon(Icons.fullscreen, color: Colors.white),
-                                )))),
+                                    },
+                                    child: const Icon(Icons.fullscreen, color: Colors.white))))),
                   ])))),
     ];
   }
@@ -276,25 +275,24 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
             SizedBox(
                 width: 48,
                 child: WillPopScope(
-                  onWillPop: () {
-                    _logger.info('willPop in landscape, back to portrait');
-                    // back to portrait when tap back button when in fullscreen mode
-                    if (MediaQuery.of(context).orientation == Orientation.landscape) {
-                      SystemChrome.setPreferredOrientations(
-                          [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-                      SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
-                    }
-                    return Future.value(true);
-                  },
-                  child: MaterialButton(
-                      onPressed: () {
+                    onWillPop: () {
+                      _logger.info('willPop in landscape, back to portrait');
+                      // back to portrait when tap back button when in fullscreen mode
+                      if (MediaQuery.of(context).orientation == Orientation.landscape) {
                         SystemChrome.setPreferredOrientations(
                             [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-                        Navigator.pop(context);
-                      },
-                      padding: EdgeInsets.all(4),
-                      child: const Icon(Icons.fullscreen, color: Colors.white70)),
-                )),
+                        SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
+                      }
+                      return Future.value(true);
+                    },
+                    child: MaterialButton(
+                        onPressed: () {
+                          SystemChrome.setPreferredOrientations(
+                              [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+                          Navigator.pop(context);
+                        },
+                        padding: EdgeInsets.all(4),
+                        child: const Icon(Icons.fullscreen, color: Colors.white70)))),
           ])),
     ];
   }
@@ -302,21 +300,22 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   @override
   Widget build(BuildContext context) {
     isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
-    isPortraitVideo = true ?? controller.value.size.width < controller.value.size.height;
+    isPortraitVideo = controller.value.size.width < controller.value.size.height;
 
 //    _logger.info('isPortrait: $isPortrait isPortraitVideo: $isPortraitVideo isFullscreenMode: ${widget.isFullscreenMode}');
     return Stack(
-      fit: StackFit.passthrough,
-      children: [
-        _buildGesture(),
-        _VideoControlScrubber(controller: controller),
-        controller.value.isBuffering
-            ? const Center(child: const CircularProgressIndicator())
-            : const SizedBox(),
-      ]..addAll(isLayoutVisible
-          ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
-          : [const SizedBox()]),
-    );
+        fit: StackFit.passthrough,
+        children: [
+          _buildGesture(),
+          _VideoControlScrubber(controller: controller, isFullscreen: widget.isFullscreenMode),
+          controller.value.isBuffering
+              ? const Center(child: const CircularProgressIndicator())
+              : const SizedBox(),
+        ]..addAll(
+            isLayoutVisible
+                ? (isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout())
+                : [const SizedBox()],
+          ));
   }
 }
 
@@ -396,8 +395,9 @@ class _VideoIndicatorController extends ValueNotifier<_VideoIndicatorValue> {
 class _VideoControlScrubber extends StatefulWidget {
   final Widget child;
   final AsunaVideoPlayerController controller;
+  final bool isFullscreen;
 
-  _VideoControlScrubber({this.child, @required this.controller});
+  _VideoControlScrubber({this.child, @required this.controller, this.isFullscreen = false});
 
   @override
   State<StatefulWidget> createState() => _VideoControlScrubberState();
@@ -551,7 +551,7 @@ class _VideoControlScrubberState extends State<_VideoControlScrubber> {
       return const SizedBox();
     }
 
-    final fixedHeight = MediaQuery.of(context).size.height / 2 - 80;
+    final fixedHeight = widget.isFullscreen ? MediaQuery.of(context).size.height / 2 - 80 : 30.0;
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
