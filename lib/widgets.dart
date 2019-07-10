@@ -237,7 +237,8 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                                         return Navigator.pop(context);
                                       }
 
-                                      Navigator.push(context, MaterialPageRoute(builder: (_) {
+                                      return Navigator.push(context,
+                                          MaterialPageRoute(builder: (_) {
                                         SystemChrome.setPreferredOrientations([
                                           DeviceOrientation.landscapeLeft,
                                           DeviceOrientation.landscapeRight
@@ -252,6 +253,8 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
   }
 
   List<Widget> _buildLandscapeLayout() {
+    final position = controller.value.position;
+    final duration = controller.value.duration;
     return [
       // top
       // middle
@@ -271,6 +274,13 @@ class _VideoPlayPauseState extends State<VideoPlayPause> {
                         : const Icon(Icons.play_arrow, color: Colors.white70))),
             // progress indicator
             Expanded(child: VideoProgressIndicator(controller, allowScrubbing: true)),
+            // video position info
+            Container(
+                padding: EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  '${position.inMinutes}:${position.inSeconds % 60}/${duration.inMinutes}:${duration.inSeconds % 60}',
+                  style: _textStyle,
+                )),
             // fullscreen button
             SizedBox(
                 width: 48,
